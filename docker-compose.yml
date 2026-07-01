@@ -1,0 +1,41 @@
+services:
+
+  backend:
+    build: ./backend
+    container_name: pos-backend
+    ports:
+      - "${PORT}:3000"
+    command: npm run dev
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    networks:
+      - pos-network
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:17
+    container_name: pos-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - pos-network
+
+volumes:
+  postgres-data:
+
+networks:
+  pos-network:
