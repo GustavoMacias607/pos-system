@@ -35,6 +35,7 @@ Backend for a Point of Sale system built with Node.js, Express, PostgreSQL, and 
 ## API Documentation
 
 - [Products API](./docs/products-api.md)
+- [Categories API](./docs/categories-api.md)
 - [Sales API](./docs/sales-api.md)
 
 ## Run Project
