@@ -26,6 +26,17 @@ const findByName = async (name) => {
     return result.rows[0];
 };
 
+
+const findProductsByIds = async (ids) => {
+    const result = await pool.query(
+        'SELECT * FROM products WHERE id = ANY($1)',
+        [ids]
+    );
+
+    return result.rows;
+};
+
+
 const create = async (product) => {
     const { name, description, price, stock } = product;
 
@@ -93,12 +104,45 @@ const activate = async (id) => {
     return result.rows[0];
 };
 
+const increaseStock = async (client, productId, quantity) => {
+    const result = await client.query(
+        `
+        UPDATE products
+        SET stock = stock + $1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING *
+        `,
+        [quantity, productId]
+    );
+
+    return result.rows[0];
+};
+
+const decreaseStock = async (client, productId, quantity) => {
+    const result = await client.query(
+        `
+        UPDATE products
+        SET stock = stock - $1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING *
+        `,
+        [quantity, productId]
+    );
+
+    return result.rows[0];
+};
+
 module.exports = {
     findAll,
     findById,
-    create,
     findByName,
+    findProductsByIds,
+    create,
     update,
     deactivate,
-    activate
+    activate,
+    increaseStock,
+    decreaseStock
 };
