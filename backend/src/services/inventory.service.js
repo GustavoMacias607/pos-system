@@ -1,12 +1,14 @@
 const pool = require('../config/database');
 const inventoryRepository = require('../repositories/inventory.repository');
 const productRepository = require('../repositories/product.repository');
-const { validateInventoryAdjustmentInput, validateStockEntryInput, validateWasteInput } = require('../validators/inventory.validator');
+const { validateInventoryAdjustmentInput, validateStockEntryInput, validateWasteInput, validateInventoryMovementFilters } = require('../validators/inventory.validator');
 const AppError = require('../errors/AppError');
 
-const getAllMovements = async () => {
-    return inventoryRepository.findAllMovements();
-}
+const getAllMovements = async (filters) => {
+    const normalizedFilters = validateInventoryMovementFilters(filters);
+
+    return inventoryRepository.findAllMovements(normalizedFilters);
+};
 
 const createAdjustment = async (data) => {
     validateInventoryAdjustmentInput(data);

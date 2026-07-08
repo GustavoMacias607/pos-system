@@ -80,6 +80,78 @@ GET /api/inventory/movements
 }
 ```
 
+### Query parameters
+
+The inventory movements endpoint supports optional filters.
+
+| Parameter | Type    | Required | Description                        |
+| --------- | ------- | -------: | ---------------------------------- |
+| type      | string  |       No | Filters movements by movement type |
+| productId | integer |       No | Filters movements by product ID    |
+
+### Filter examples
+
+Filter movements by type:
+
+```http
+GET /api/inventory/movements?type=WASTE
+```
+
+Filter movements by product ID:
+
+```http
+GET /api/inventory/movements?productId=1
+```
+
+Filter movements by type and product ID:
+
+```http
+GET /api/inventory/movements?type=PURCHASE&productId=1
+```
+
+### Valid movement types
+
+```text
+PURCHASE
+SALE
+WASTE
+SUPPLIER_RETURN
+CUSTOMER_RETURN
+MANUAL_ADJUSTMENT
+```
+
+### Filter validation errors
+
+Invalid movement type:
+
+```json
+{
+  "success": false,
+  "message": "Invalid movement type"
+}
+```
+
+Status code:
+
+```http
+400 Bad Request
+```
+
+Invalid product ID:
+
+```json
+{
+  "success": false,
+  "message": "Product ID must be a positive integer"
+}
+```
+
+Status code:
+
+```http
+400 Bad Request
+```
+
 ### Business rules
 
 - Inventory movements are returned in descending order by creation date.

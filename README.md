@@ -108,6 +108,9 @@ Available endpoints:
 
 ```http
 GET /api/inventory/movements
+GET /api/inventory/movements?type=WASTE
+GET /api/inventory/movements?productId=1
+GET /api/inventory/movements?type=PURCHASE&productId=1
 POST /api/inventory/adjustment
 POST /api/inventory/stock-entry
 POST /api/inventory/waste
@@ -116,6 +119,7 @@ POST /api/inventory/waste
 Main features:
 
 - Inventory movement history
+- Inventory movement filters by type and product
 - Manual stock adjustments
 - Positive stock corrections
 - Negative stock corrections

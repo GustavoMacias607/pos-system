@@ -1,4 +1,5 @@
 const AppError = require('../errors/AppError');
+const { VALID_MOVEMENT_TYPES } = require('../constants/inventory.constants');
 
 const validateInventoryAdjustmentInput = (data) => {
     if (!data) {
@@ -92,9 +93,34 @@ const validateWasteInput = (data) => {
 };
 
 
+const validateInventoryMovementFilters = (filters) => {
+    const normalizedFilters = {};
+
+    if (filters.type !== undefined) {
+        if (!VALID_MOVEMENT_TYPES.includes(filters.type)) {
+            throw new AppError('Invalid movement type', 400);
+        }
+
+        normalizedFilters.type = filters.type;
+    }
+
+    if (filters.productId !== undefined) {
+        const productId = Number(filters.productId);
+
+        if (!Number.isInteger(productId) || productId <= 0) {
+            throw new AppError('Product ID must be a positive integer', 400);
+        }
+
+        normalizedFilters.productId = productId;
+    }
+
+    return normalizedFilters;
+};
+
 
 module.exports = {
     validateInventoryAdjustmentInput,
     validateStockEntryInput,
-    validateWasteInput
+    validateWasteInput,
+    validateInventoryMovementFilters
 };

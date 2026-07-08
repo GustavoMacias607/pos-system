@@ -23,7 +23,24 @@ const createMovement = async (client, movement) => {
     return result.rows[0];
 };
 
-const findAllMovements = async () => {
+const findAllMovements = async (filters = {}) => {
+    const conditions = [];
+    const values = [];
+
+    if (filters.type) {
+        values.push(filters.type);
+        conditions.push(`i.type = $${values.length}`);
+    }
+
+    if (filters.productId) {
+        values.push(filters.productId);
+        conditions.push(`i.product_id = $${values.length}`);
+    }
+
+    const whereClause = conditions.length > 0
+        ? `WHERE ${conditions.join(' AND ')}`
+        : '';
+
     const result = await pool.query(
         `
         SELECT 
@@ -37,8 +54,10 @@ const findAllMovements = async () => {
         FROM inventory_movements i
         LEFT JOIN products p
             ON i.product_id = p.id
+        ${whereClause}
         ORDER BY i.created_at DESC
-        `
+        `,
+        values
     );
 
     return result.rows;

@@ -2,7 +2,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const inventoryService = require('../services/inventory.service');
 
 const getMovements = asyncHandler(async (req, res) => {
-    const movements = await inventoryService.getAllMovements();
+    const movements = await inventoryService.getAllMovements(req.query);
     res.json({
         success: true,
         data: movements
