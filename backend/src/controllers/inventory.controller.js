@@ -9,6 +9,16 @@ const getMovements = asyncHandler(async (req, res) => {
     });
 });
 
+const getLowStockProducts = asyncHandler(async (req, res) => {
+    const products = await inventoryService.getLowStockProducts();
+
+    res.json({
+        success: true,
+        data: products
+    });
+});
+
+
 const createAdjustment = asyncHandler(async (req, res) => {
     const result = await inventoryService.createAdjustment(req.body);
 
@@ -41,6 +51,7 @@ const createWaste = asyncHandler(async (req, res) => {
 
 module.exports = {
     getMovements,
+    getLowStockProducts,
     createAdjustment,
     createStockEntry,
     createWaste

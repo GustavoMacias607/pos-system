@@ -69,6 +69,33 @@ const findProductsByIds = async (ids) => {
     return result.rows;
 };
 
+const findLowStockProducts = async () => {
+
+    const result = await pool.query(
+        `
+    SELECT 
+        p.id,
+        p.name,
+        p.description,
+        p.price,
+        p.stock,
+        p.minimum_stock,
+        p.active,
+        p.category_id,
+        c.name AS category_name,
+        c.active AS category_active,
+        p.created_at,
+        p.updated_at
+    FROM products p
+    LEFT JOIN categories c
+        ON p.category_id = c.id
+    WHERE p.active = true
+    AND p.stock <= p.minimum_stock
+    ORDER BY p.stock ASC, p.name ASC
+        `
+    )
+    return result.rows;
+};
 
 const create = async (product) => {
     const { name, description, price, stock, categoryId } = product;
@@ -168,11 +195,13 @@ const decreaseStock = async (client, productId, quantity) => {
     return result.rows[0];
 };
 
+
 module.exports = {
     findAll,
     findById,
     findByName,
     findProductsByIds,
+    findLowStockProducts,
     create,
     update,
     deactivate,

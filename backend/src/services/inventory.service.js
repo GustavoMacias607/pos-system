@@ -10,6 +10,10 @@ const getAllMovements = async (filters) => {
     return inventoryRepository.findAllMovements(normalizedFilters);
 };
 
+const getLowStockProducts = async () => {
+    return productRepository.findLowStockProducts();
+};
+
 const createAdjustment = async (data) => {
     validateInventoryAdjustmentInput(data);
 
@@ -164,6 +168,7 @@ const createWaste = async (data) => {
 
 module.exports = {
     getAllMovements,
+    getLowStockProducts,
     createAdjustment,
     createStockEntry,
     createWaste

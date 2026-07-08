@@ -21,6 +21,7 @@ GET /api/inventory/movements
 GET /api/inventory/movements?type=WASTE
 GET /api/inventory/movements?productId=1
 GET /api/inventory/movements?type=PURCHASE&productId=1
+GET /api/inventory/low-stock
 POST /api/inventory/adjustment
 POST /api/inventory/stock-entry
 POST /api/inventory/waste

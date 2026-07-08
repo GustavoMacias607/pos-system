@@ -10,6 +10,8 @@ const {
 const router = express.Router();
 
 router.get('/movements', inventoryController.getMovements);
+router.get('/low-stock', inventoryController.getLowStockProducts);
+
 router.post('/adjustment', validateInventoryAdjustmentData, inventoryController.createAdjustment);
 router.post('/stock-entry', validateStockEntryData, inventoryController.createStockEntry);
 router.post('/waste', validateWasteData, inventoryController.createWaste);
