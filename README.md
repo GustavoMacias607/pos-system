@@ -17,6 +17,8 @@ Backend for a Point of Sale system built with Node.js, Express, PostgreSQL, and 
 - Inventory movement history
 - Manual inventory adjustments
 - Positive and negative stock corrections
+- Stock entries using `PURCHASE` movements
+- Waste movements for damaged, expired, or lost products
 - Stock validation to prevent negative inventory
 - Transactional sale operations
 - Transactional inventory operations
@@ -58,6 +60,7 @@ Main features:
 
 - Create products
 - List products
+- Get product by ID
 - Update products
 - Activate products
 - Deactivate products
@@ -73,6 +76,7 @@ Main features:
 
 - Create categories
 - List categories
+- Get category by ID
 - Update categories
 - Activate categories
 - Deactivate categories
@@ -86,6 +90,8 @@ Main features:
 Main features:
 
 - Create sales
+- List sales
+- Get sale by ID
 - Register sale details
 - Decrease stock after sale
 - Register inventory movements
@@ -103,6 +109,8 @@ Available endpoints:
 ```http
 GET /api/inventory/movements
 POST /api/inventory/adjustment
+POST /api/inventory/stock-entry
+POST /api/inventory/waste
 ```
 
 Main features:
@@ -111,6 +119,8 @@ Main features:
 - Manual stock adjustments
 - Positive stock corrections
 - Negative stock corrections
+- Stock entries using `PURCHASE` movements
+- Waste movements using `WASTE` movements
 - Stock validation to prevent negative inventory
 - Transactional stock update and movement creation
 
@@ -143,6 +153,6 @@ Main database-related tables:
 
 Sale creation and sale cancellation are executed using database transactions to keep sales, stock, and inventory movements consistent.
 
-Manual inventory adjustments are also executed using database transactions to keep product stock and inventory movement history consistent.
+Manual inventory adjustments, stock entries, and waste movements are also executed using database transactions to keep product stock and inventory movement history consistent.
 
-The system does not allow inventory adjustments that would leave product stock below zero.
+The system does not allow inventory operations that would leave product stock below zero.
