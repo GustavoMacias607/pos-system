@@ -18,6 +18,9 @@ The Inventory module is responsible for tracking stock movements, creating manua
 
 ```http
 GET /api/inventory/movements
+GET /api/inventory/movements?type=WASTE
+GET /api/inventory/movements?productId=1
+GET /api/inventory/movements?type=PURCHASE&productId=1
 POST /api/inventory/adjustment
 POST /api/inventory/stock-entry
 POST /api/inventory/waste
