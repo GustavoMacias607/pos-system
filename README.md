@@ -15,10 +15,12 @@ Backend for a Point of Sale system built with Node.js, Express, PostgreSQL, and 
 - Sale cancellation
 - Stock restoration after sale cancellation
 - Inventory movement history
+- Inventory movement filters by type and product
 - Manual inventory adjustments
 - Positive and negative stock corrections
 - Stock entries using `PURCHASE` movements
 - Waste movements for damaged, expired, or lost products
+- Low stock product detection
 - Stock validation to prevent negative inventory
 - Transactional sale operations
 - Transactional inventory operations
@@ -111,6 +113,7 @@ GET /api/inventory/movements
 GET /api/inventory/movements?type=WASTE
 GET /api/inventory/movements?productId=1
 GET /api/inventory/movements?type=PURCHASE&productId=1
+GET /api/inventory/low-stock
 POST /api/inventory/adjustment
 POST /api/inventory/stock-entry
 POST /api/inventory/waste
@@ -120,6 +123,7 @@ Main features:
 
 - Inventory movement history
 - Inventory movement filters by type and product
+- Low stock product detection
 - Manual stock adjustments
 - Positive stock corrections
 - Negative stock corrections
@@ -160,3 +164,5 @@ Sale creation and sale cancellation are executed using database transactions to 
 Manual inventory adjustments, stock entries, and waste movements are also executed using database transactions to keep product stock and inventory movement history consistent.
 
 The system does not allow inventory operations that would leave product stock below zero.
+
+A product is considered low stock when its current stock is less than or equal to its minimum stock.

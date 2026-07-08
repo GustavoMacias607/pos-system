@@ -434,6 +434,58 @@ POST /api/inventory/waste
 }
 ```
 
+## Get low stock products
+
+Returns active products where current stock is less than or equal to the minimum stock.
+
+This endpoint is useful for detecting products that need restocking.
+
+```http
+GET /api/inventory/low-stock
+```
+
+### Success response
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Laptop Lenovo Actualizada",
+      "description": "Laptop updated description",
+      "price": "15000.00",
+      "stock": 2,
+      "minimum_stock": 5,
+      "active": true,
+      "category_id": 1,
+      "category_name": "Electronics",
+      "category_active": true,
+      "created_at": "2026-07-07T15:20:10.000Z",
+      "updated_at": "2026-07-08T18:05:00.000Z"
+    }
+  ]
+}
+```
+
+### Empty response
+
+If there are no products with low stock, the endpoint returns an empty array.
+
+```json
+{
+  "success": true,
+  "data": []
+}
+```
+
+### Business rules
+
+- Only active products are returned.
+- A product is considered low stock when `stock <= minimum_stock`.
+- Results are ordered by stock ascending and product name ascending.
+- Products with inactive status are not included.
+
 ---
 
 # Error responses
@@ -642,3 +694,4 @@ Status code:
 - The product must be active before creating an inventory movement.
 - Stock update and movement creation are executed inside a database transaction.
 - If any operation fails, the transaction is rolled back.
+- A product is considered low stock when `stock <= minimum_stock`.
