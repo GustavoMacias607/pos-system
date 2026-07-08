@@ -1,4 +1,4 @@
-const { validateInventoryAdjustmentInput } = require('../validators/inventory.validator');
+const { validateInventoryAdjustmentInput, validateStockEntryInput, validateWasteInput } = require('../validators/inventory.validator');
 
 const validateInventoryAdjustmentData = (req, res, next) => {
     try {
@@ -9,6 +9,26 @@ const validateInventoryAdjustmentData = (req, res, next) => {
     }
 };
 
+const validateStockEntryData = (req, res, next) => {
+    try {
+        validateStockEntryInput(req.body);
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+
+const validateWasteData = (req, res, next) => {
+    try {
+        validateWasteInput(req.body);
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
-    validateInventoryAdjustmentData
+    validateInventoryAdjustmentData,
+    validateStockEntryData,
+    validateWasteData
 };

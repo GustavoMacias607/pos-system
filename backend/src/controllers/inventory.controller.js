@@ -19,7 +19,29 @@ const createAdjustment = asyncHandler(async (req, res) => {
     });
 });
 
+const createStockEntry = asyncHandler(async (req, res) => {
+    const result = await inventoryService.createStockEntry(req.body);
+
+    res.status(201).json({
+        success: true,
+        data: result,
+        message: 'Stock entry created successfully'
+    })
+})
+
+const createWaste = asyncHandler(async (req, res) => {
+    const result = await inventoryService.createWaste(req.body);
+
+    res.status(201).json({
+        success: true,
+        data: result,
+        message: 'Waste movement created successfully'
+    });
+});
+
 module.exports = {
     getMovements,
-    createAdjustment
+    createAdjustment,
+    createStockEntry,
+    createWaste
 };
