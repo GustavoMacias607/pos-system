@@ -1,5 +1,7 @@
 const userRepository = require('../repositories/user.repository');
 const AppError = require('../errors/AppError');
+const bcrypt = require('bcrypt');
+const SALT_ROUNDS = 10;
 const {
     validateCreateUserInput,
     validateUpdateUserInput
@@ -28,8 +30,7 @@ const createUser = async (data) => {
         throw new AppError('Email already exists', 409);
     }
 
-    // TODO: replace with bcrypt hash in Auth ticket
-    const passwordHash = data.password;
+    const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
 
     const userData = {
         name: data.name,
@@ -67,10 +68,8 @@ const updateUser = async (id, data) => {
     if (data.email !== undefined) {
         userData.email = data.email;
     }
-
     if (data.password !== undefined) {
-        // TODO: replace with bcrypt hash in Auth ticket
-        userData.passwordHash = data.password;
+        userData.passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
     }
 
     if (data.role !== undefined) {
