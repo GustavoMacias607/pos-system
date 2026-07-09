@@ -3,6 +3,8 @@ const productRoutes = require('./routes/product.routes');
 const salesRoutes = require('./routes/sales.routes');
 const categoryRoutes = require('./routes/category.routes');
 const inventoryRoutes = require('./routes/inventory.routes');
+const userRoutes = require('./routes/user.routes');
+
 const errorHandler = require('./middlewares/errorHandler.middleware');
 
 const app = express();
@@ -19,6 +21,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/users', userRoutes);
 
 app.use(errorHandler);
 

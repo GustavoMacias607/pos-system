@@ -9,6 +9,10 @@ Backend for a Point of Sale system built with Node.js, Express, PostgreSQL, and 
 - Product category assignment
 - Category management
 - Category activation and deactivation
+- User management
+- User activation and deactivation
+- User roles: `ADMIN`, `EMPLOYEE`, `SUPERVISOR`
+- User email uniqueness validation
 - Sale creation
 - Sale detail registration
 - Stock decrease after sales
@@ -41,6 +45,8 @@ Backend for a Point of Sale system built with Node.js, Express, PostgreSQL, and 
 - `backend/src/middlewares`: Express middlewares
 - `backend/src/validators`: reusable input validators
 - `backend/src/constants`: shared constants
+- `backend/src/errors`: custom application errors
+- `backend/src/utils`: shared utilities
 - `docs`: module documentation
 
 ## API Documentation
@@ -49,6 +55,7 @@ Backend for a Point of Sale system built with Node.js, Express, PostgreSQL, and 
 - [Categories API](./docs/categories-api.md)
 - [Sales API](./docs/sales-api.md)
 - [Inventory API](./docs/inventory-api.md)
+- [Users API](./docs/users-api.md)
 
 ## Available API Modules
 
@@ -82,6 +89,43 @@ Main features:
 - Update categories
 - Activate categories
 - Deactivate categories
+
+### Users
+
+```http
+/api/users
+```
+
+Available endpoints:
+
+```http
+GET /api/users
+GET /api/users/:id
+POST /api/users
+PUT /api/users/:id
+DELETE /api/users/:id
+PATCH /api/users/:id/activate
+```
+
+Main features:
+
+- Create users
+- List users
+- Get user by ID
+- Update users
+- Activate users
+- Deactivate users
+- Validate required user fields
+- Validate user email format
+- Validate unique user email
+- Validate user roles
+- Prevent returning `password` or `password_hash` in API responses
+
+Valid roles:
+
+- `ADMIN`
+- `EMPLOYEE`
+- `SUPERVISOR`
 
 ### Sales
 
@@ -152,6 +196,7 @@ Main database-related tables:
 
 - `products`
 - `categories`
+- `users`
 - `sales`
 - `sale_details`
 - `inventory_movements`
@@ -166,3 +211,7 @@ Manual inventory adjustments, stock entries, and waste movements are also execut
 The system does not allow inventory operations that would leave product stock below zero.
 
 A product is considered low stock when its current stock is less than or equal to its minimum stock.
+
+Users are soft deleted by setting `active = false`.
+
+User passwords are not returned by the API. Password hashing will be implemented in the Auth module.
