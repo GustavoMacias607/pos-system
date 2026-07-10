@@ -1,11 +1,12 @@
 const userRepository = require('../repositories/user.repository');
 const AppError = require('../errors/AppError');
 const bcrypt = require('bcrypt');
-const SALT_ROUNDS = 10;
+const { validateLoginInput } = require('../validators/auth.validator');
 const {
     validateCreateUserInput,
     validateUpdateUserInput
 } = require('../validators/user.validator');
+const SALT_ROUNDS = 10;
 
 const getAllUsers = async () => {
     return await userRepository.findAll();

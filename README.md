@@ -28,6 +28,11 @@ Backend for a Point of Sale system built with Node.js, Express, PostgreSQL, and 
 - Stock validation to prevent negative inventory
 - Transactional sale operations
 - Transactional inventory operations
+- Password hashing with bcrypt
+- Login with email and password
+- JWT access token authentication
+- Protected routes
+- Role-based authorization
 
 ## Tech Stack
 
@@ -56,6 +61,7 @@ Backend for a Point of Sale system built with Node.js, Express, PostgreSQL, and 
 - [Sales API](./docs/sales-api.md)
 - [Inventory API](./docs/inventory-api.md)
 - [Users API](./docs/users-api.md)
+- [Auth API](./docs/auth-api.md)
 
 ## Available API Modules
 
@@ -126,6 +132,27 @@ Valid roles:
 - `ADMIN`
 - `EMPLOYEE`
 - `SUPERVISOR`
+
+### Auth
+
+```http
+/api/auth
+```
+
+Available endpoints:
+
+```http
+POST /api/auth/login
+```
+
+Main features:
+
+- Login with email and password
+- Password validation using bcrypt
+- JWT access token generation
+- Protected routes using Authorization: Bearer <token>
+- Role-based access control
+- Active user validation before authentication
 
 ### Sales
 
@@ -214,4 +241,8 @@ A product is considered low stock when its current stock is less than or equal t
 
 Users are soft deleted by setting `active = false`.
 
-User passwords are not returned by the API. Password hashing will be implemented in the Auth module.
+User passwords are hashed with bcrypt before being stored in the database.
+
+User passwords and password hashes are never returned by the API.
+
+Protected routes require a valid JWT access token using the `Authorization: Bearer <token>` header.

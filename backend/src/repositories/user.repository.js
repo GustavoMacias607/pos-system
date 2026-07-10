@@ -59,6 +59,27 @@ const findByEmail = async (userEmail) => {
     return result.rows[0];
 };
 
+const findByEmailWithPassword = async (userEmail) => {
+    const result = await pool.query(
+        `
+        SELECT
+            id,
+            name,
+            email,
+            password_hash,
+            role,
+            active,
+            created_at,
+            updated_at
+        FROM users
+        WHERE LOWER(email) = LOWER($1)
+        `,
+        [userEmail]
+    );
+
+    return result.rows[0];
+};
+
 const create = async (userData) => {
     const result = await pool.query(
         `
@@ -198,6 +219,7 @@ module.exports = {
     findAll,
     findById,
     findByEmail,
+    findByEmailWithPassword,
     create,
     update,
     activate,
