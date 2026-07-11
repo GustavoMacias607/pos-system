@@ -1,4 +1,4 @@
-const { validateLoginInput } = require('../validators/auth.validator');
+const { validateLoginInput, validateRefreshTokenInput } = require('../validators/auth.validator');
 
 const validateAuthData = (req, res, next) => {
     try {
@@ -9,6 +9,16 @@ const validateAuthData = (req, res, next) => {
     }
 };
 
+const validateRefreshTokenData = (req, res, next) => {
+    try {
+        validateRefreshTokenInput(req.body);
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
-    validateAuthData
-}
+    validateAuthData,
+    validateRefreshTokenData
+};

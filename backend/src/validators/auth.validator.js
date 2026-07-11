@@ -35,6 +35,25 @@ const validateLoginInput = (data) => {
     }
 };
 
+const validateRefreshTokenInput = (data) => {
+    if (!data || typeof data !== 'object') {
+        throw new AppError('Refresh token data is required', 400);
+    }
+
+    if (data.refreshToken === undefined) {
+        throw new AppError('Refresh token is required', 400);
+    }
+
+    if (typeof data.refreshToken !== 'string') {
+        throw new AppError('Refresh token must be a string', 400);
+    }
+
+    if (data.refreshToken.trim() === '') {
+        throw new AppError('Refresh token cannot be empty', 400);
+    }
+};
+
 module.exports = {
-    validateLoginInput
+    validateLoginInput,
+    validateRefreshTokenInput
 };
