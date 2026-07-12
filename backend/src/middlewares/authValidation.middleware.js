@@ -1,4 +1,9 @@
-const { validateLoginInput, validateRefreshTokenInput } = require('../validators/auth.validator');
+const {
+    validateLoginInput,
+    validateRefreshTokenInput,
+    validateTwoFactorTokenInput,
+    validateTwoFactorLoginInput
+} = require('../validators/auth.validator');
 
 const validateAuthData = (req, res, next) => {
     try {
@@ -18,7 +23,27 @@ const validateRefreshTokenData = (req, res, next) => {
     }
 };
 
+const validateTwoFactorTokenData = (req, res, next) => {
+    try {
+        validateTwoFactorTokenInput(req.body);
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+
+const validateTwoFactorLoginData = (req, res, next) => {
+    try {
+        validateTwoFactorLoginInput(req.body);
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     validateAuthData,
-    validateRefreshTokenData
+    validateRefreshTokenData,
+    validateTwoFactorTokenData,
+    validateTwoFactorLoginData
 };

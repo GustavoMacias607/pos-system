@@ -69,6 +69,8 @@ const findByEmailWithPassword = async (userEmail) => {
             password_hash,
             role,
             active,
+            two_factor_enabled,
+            two_factor_enabled_at,
             created_at,
             updated_at
         FROM users
@@ -215,6 +217,88 @@ const activate = async (userId) => {
     return result.rows[0];
 };
 
+
+const findTwoFactorByUserId = async (userId) => {
+    const result = await pool.query(
+        `
+        SELECT
+            id,
+            email,
+            two_factor_secret,
+            two_factor_enabled,
+            two_factor_enabled_at
+        FROM users
+        WHERE id = $1
+        `,
+        [userId]
+    );
+
+    return result.rows[0];
+};
+
+const updateTwoFactorSecret = async (userId, secret) => {
+    const result = await pool.query(
+        `
+        UPDATE users
+        SET
+            two_factor_secret = $1,
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING
+            id,
+            email,
+            two_factor_enabled,
+            two_factor_enabled_at
+        `,
+        [secret, userId]
+    );
+
+    return result.rows[0];
+};
+
+const enableTwoFactor = async (userId) => {
+    const result = await pool.query(
+        `
+        UPDATE users
+        SET
+            two_factor_enabled = TRUE,
+            two_factor_enabled_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING
+            id,
+            email,
+            two_factor_enabled,
+            two_factor_enabled_at
+        `,
+        [userId]
+    );
+
+    return result.rows[0];
+};
+
+const disableTwoFactor = async (userId) => {
+    const result = await pool.query(
+        `
+        UPDATE users
+        SET
+            two_factor_secret = NULL,
+            two_factor_enabled = FALSE,
+            two_factor_enabled_at = NULL,
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING
+            id,
+            email,
+            two_factor_enabled,
+            two_factor_enabled_at
+        `,
+        [userId]
+    );
+
+    return result.rows[0];
+};
+
 module.exports = {
     findAll,
     findById,
@@ -223,5 +307,9 @@ module.exports = {
     create,
     update,
     activate,
-    deactivate
+    deactivate,
+    findTwoFactorByUserId,
+    updateTwoFactorSecret,
+    enableTwoFactor,
+    disableTwoFactor
 };
