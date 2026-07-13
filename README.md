@@ -2,6 +2,8 @@
 
 Backend for a Point of Sale system built with Node.js, Express, PostgreSQL, and Docker.
 
+This project is designed as a professional full-stack learning project focused on backend architecture, business rules, authentication, inventory management, sales workflows, and real-world API design.
+
 ## Current Features
 
 - Product management
@@ -13,6 +15,18 @@ Backend for a Point of Sale system built with Node.js, Express, PostgreSQL, and 
 - User activation and deactivation
 - User roles: `ADMIN`, `EMPLOYEE`, `SUPERVISOR`
 - User email uniqueness validation
+- Password hashing with bcrypt
+- Login with email and password
+- JWT access token authentication
+- Refresh token sessions
+- Logout by refresh token revocation
+- Protected routes
+- Role-based authorization
+- Two-factor authentication with TOTP
+- QR code generation for authenticator apps
+- Backup codes for 2FA recovery
+- Google Login using Google ID tokens
+- Google account linking through user identities
 - Sale creation
 - Sale detail registration
 - Stock decrease after sales
@@ -28,11 +42,6 @@ Backend for a Point of Sale system built with Node.js, Express, PostgreSQL, and 
 - Stock validation to prevent negative inventory
 - Transactional sale operations
 - Transactional inventory operations
-- Password hashing with bcrypt
-- Login with email and password
-- JWT access token authentication
-- Protected routes
-- Role-based authorization
 
 ## Tech Stack
 
@@ -41,6 +50,11 @@ Backend for a Point of Sale system built with Node.js, Express, PostgreSQL, and 
 - PostgreSQL
 - Docker
 - Docker Compose
+- bcrypt
+- JSON Web Token
+- otplib
+- qrcode
+- Google Auth Library
 
 ## Project Structure
 
@@ -52,6 +66,7 @@ Backend for a Point of Sale system built with Node.js, Express, PostgreSQL, and 
 - `backend/src/constants`: shared constants
 - `backend/src/errors`: custom application errors
 - `backend/src/utils`: shared utilities
+- `backend/migrations`: database migrations
 - `docs`: module documentation
 
 ## API Documentation
@@ -80,6 +95,8 @@ Main features:
 - Activate products
 - Deactivate products
 - Assign products to categories
+- Validate stock
+- Detect low stock products using minimum stock
 
 ### Categories
 
@@ -125,6 +142,7 @@ Main features:
 - Validate user email format
 - Validate unique user email
 - Validate user roles
+- Hash passwords with bcrypt
 - Prevent returning `password` or `password_hash` in API responses
 
 Valid roles:
@@ -143,6 +161,13 @@ Available endpoints:
 
 ```http
 POST /api/auth/login
+POST /api/auth/refresh
+POST /api/auth/logout
+POST /api/auth/2fa/setup
+POST /api/auth/2fa/verify-setup
+POST /api/auth/2fa/verify-login
+POST /api/auth/2fa/disable
+POST /api/auth/google
 ```
 
 Main features:
@@ -150,9 +175,45 @@ Main features:
 - Login with email and password
 - Password validation using bcrypt
 - JWT access token generation
-- Protected routes using Authorization: Bearer <token>
+- Refresh token generation
+- Session persistence in database
+- Logout by revoking refresh token sessions
+- Protected routes using `Authorization: Bearer <accessToken>`
 - Role-based access control
 - Active user validation before authentication
+- Two-factor authentication using TOTP
+- QR code generation for Google Authenticator or similar apps
+- Backup codes for 2FA recovery
+- Google Login using Google ID tokens
+- Google account linking through `user_identities`
+
+Authentication flows:
+
+```txt
+Email/password
+↓
+accessToken + refreshToken
+```
+
+```txt
+Email/password with 2FA enabled
+↓
+requiresTwoFactor = true
+↓
+verify TOTP token or backup code
+↓
+accessToken + refreshToken
+```
+
+```txt
+Google Login
+↓
+Google ID token
+↓
+backend verifies token
+↓
+accessToken + refreshToken
+```
 
 ### Sales
 
@@ -170,6 +231,8 @@ Main features:
 - Register inventory movements
 - Cancel sales
 - Restore stock after cancellation
+- Execute sale creation inside a database transaction
+- Execute sale cancellation inside a database transaction
 
 ### Inventory
 
@@ -203,16 +266,63 @@ Main features:
 - Stock validation to prevent negative inventory
 - Transactional stock update and movement creation
 
+## Environment Variables
+
+The project uses environment variables for database, server, JWT, and Google authentication configuration.
+
+Example:
+
+```env
+PORT=3000
+
+DB_HOST=postgres
+DB_PORT=5432
+DB_USER=pos_user
+DB_PASSWORD=pos_password
+DB_NAME=pos_db
+
+JWT_SECRET=your_jwt_secret_here
+JWT_EXPIRES_IN=1d
+
+GOOGLE_CLIENT_ID=your_google_client_id_here
+```
+
+Important:
+
+- `.env` contains local real values and should not be committed.
+- `.env.example` contains placeholder values and should be committed.
+- `JWT_SECRET` must be kept private.
+- `GOOGLE_CLIENT_ID` is used to validate Google ID tokens.
+- Google Client Secret is not used by the current Google Login flow.
+
 ## Run Project
 
 ```bash
 docker compose up -d
 ```
 
+To rebuild and recreate the backend container:
+
+```bash
+docker compose up -d --build --force-recreate backend
+```
+
 ## Run Migrations
 
 ```bash
 docker exec -it pos-backend npm run migrate
+```
+
+## Check Backend Logs
+
+```bash
+docker logs -f pos-backend
+```
+
+## Access PostgreSQL
+
+```bash
+docker exec -it pos-postgres psql -U pos_user -d pos_db
 ```
 
 ## Database
@@ -224,12 +334,39 @@ Main database-related tables:
 - `products`
 - `categories`
 - `users`
+- `user_sessions`
+- `user_backup_codes`
+- `user_identities`
 - `sales`
 - `sale_details`
 - `inventory_movements`
 - `schema_migrations`
 
-## Notes
+## Authentication Notes
+
+User passwords are hashed with bcrypt before being stored in the database.
+
+User passwords and password hashes are never returned by the API.
+
+JWT access tokens are used to authenticate protected routes.
+
+Protected routes require a valid JWT access token using the `Authorization: Bearer <accessToken>` header.
+
+Refresh tokens are stored as hashes in the `user_sessions` table.
+
+Logout revokes the refresh token session by setting `revoked_at`.
+
+Two-factor authentication uses TOTP codes generated by authenticator apps.
+
+Backup codes are generated when 2FA is enabled and can only be used once.
+
+Backup codes are stored as hashes in the database.
+
+Google Login validates Google ID tokens using `GOOGLE_CLIENT_ID`.
+
+Google Login does not create POS users automatically. The POS user must already exist with the same email before the Google account can be linked.
+
+## Business Rules
 
 Sale creation and sale cancellation are executed using database transactions to keep sales, stock, and inventory movements consistent.
 
@@ -241,8 +378,14 @@ A product is considered low stock when its current stock is less than or equal t
 
 Users are soft deleted by setting `active = false`.
 
-User passwords are hashed with bcrypt before being stored in the database.
+Inactive users cannot log in.
 
-User passwords and password hashes are never returned by the API.
+Invalid email and invalid password return the same error message for security reasons.
 
-Protected routes require a valid JWT access token using the `Authorization: Bearer <token>` header.
+Users can only access routes allowed for their role.
+
+`ADMIN` has full administrative access.
+
+`SUPERVISOR` can manage products, categories, sales cancellation, and inventory operations.
+
+`EMPLOYEE` can perform operational tasks such as creating sales and reading allowed resources.
