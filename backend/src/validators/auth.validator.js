@@ -128,9 +128,28 @@ const validateTwoFactorLoginInput = (data) => {
     }
 };
 
+const validateGoogleLoginInput = (data) => {
+    if (!data || typeof data !== 'object') {
+        throw new AppError('Google login data is required', 400);
+    }
+
+    if (data.idToken === undefined) {
+        throw new AppError('Google ID token is required', 400);
+    }
+
+    if (typeof data.idToken !== 'string') {
+        throw new AppError('Google ID token must be a string', 400);
+    }
+
+    if (data.idToken.trim() === '') {
+        throw new AppError('Google ID token cannot be empty', 400);
+    }
+};
+
 module.exports = {
     validateLoginInput,
     validateRefreshTokenInput,
     validateTwoFactorTokenInput,
-    validateTwoFactorLoginInput
+    validateTwoFactorLoginInput,
+    validateGoogleLoginInput
 };

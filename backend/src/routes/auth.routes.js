@@ -4,7 +4,8 @@ const {
     validateAuthData,
     validateRefreshTokenData,
     validateTwoFactorTokenData,
-    validateTwoFactorLoginData
+    validateTwoFactorLoginData,
+    validateGoogleLoginData
 } = require('../middlewares/authValidation.middleware');
 const { authenticate } = require('../middlewares/auth.middleware');
 
@@ -34,5 +35,9 @@ router.post(
     authController.disableTwoFactor
 );
 
-
+router.post(
+    '/google',
+    validateGoogleLoginData,
+    authController.loginWithGoogle
+);
 module.exports = router;

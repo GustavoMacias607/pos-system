@@ -76,6 +76,19 @@ const disableTwoFactor = asyncHandler(async (req, res) => {
         message: 'Two-factor authentication disabled successfully'
     });
 });
+
+const loginWithGoogle = asyncHandler(async (req, res) => {
+    const result = await authService.loginWithGoogle(req.body, {
+        userAgent: req.headers['user-agent'],
+        ipAddress: req.ip
+    });
+
+    res.json({
+        success: true,
+        data: result,
+        message: 'Google login successful'
+    });
+});
 module.exports = {
     login,
     refreshAccessToken,
@@ -83,5 +96,6 @@ module.exports = {
     setupTwoFactor,
     verifyTwoFactorSetup,
     verifyTwoFactorLogin,
-    disableTwoFactor
+    disableTwoFactor,
+    loginWithGoogle
 };
