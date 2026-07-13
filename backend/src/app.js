@@ -5,6 +5,7 @@ const categoryRoutes = require('./routes/category.routes');
 const inventoryRoutes = require('./routes/inventory.routes');
 const userRoutes = require('./routes/user.routes');
 const authRoutes = require('./routes/auth.routes');
+const clientRoutes = require('./routes/client.routes');
 
 const errorHandler = require('./middlewares/errorHandler.middleware');
 
@@ -24,6 +25,7 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/clients', clientRoutes);
 
 app.use(errorHandler);
 

@@ -15,6 +15,10 @@ This project is designed as a professional full-stack learning project focused o
 - User activation and deactivation
 - User roles: `ADMIN`, `EMPLOYEE`, `SUPERVISOR`
 - User email uniqueness validation
+- Client management
+- Client activation and deactivation
+- Optional client email
+- Case-insensitive unique client email validation
 - Password hashing with bcrypt
 - Login with email and password
 - JWT access token authentication
@@ -76,6 +80,7 @@ This project is designed as a professional full-stack learning project focused o
 - [Sales API](./docs/sales-api.md)
 - [Inventory API](./docs/inventory-api.md)
 - [Users API](./docs/users-api.md)
+- [Clients API](./docs/clients-api.md)
 - [Auth API](./docs/auth-api.md)
 
 ## Available API Modules
@@ -150,6 +155,37 @@ Valid roles:
 - `ADMIN`
 - `EMPLOYEE`
 - `SUPERVISOR`
+
+### Clients
+
+```http
+/api/clients
+```
+
+Available endpoints:
+
+```http
+GET /api/clients
+GET /api/clients/:id
+POST /api/clients
+PUT /api/clients/:id
+DELETE /api/clients/:id
+PATCH /api/clients/:id/activate
+```
+
+Main features:
+
+- Create clients
+- List clients
+- Get client by ID
+- Update clients
+- Activate clients
+- Deactivate clients
+- Validate required client fields
+- Validate client email format
+- Validate unique client email
+- Support clients without email
+- Soft delete clients using `active = false`
 
 ### Auth
 
@@ -334,6 +370,7 @@ Main database-related tables:
 - `products`
 - `categories`
 - `users`
+- `clients`
 - `user_sessions`
 - `user_backup_codes`
 - `user_identities`
@@ -378,6 +415,16 @@ A product is considered low stock when its current stock is less than or equal t
 
 Users are soft deleted by setting `active = false`.
 
+Clients are soft deleted by setting `active = false`.
+
+Client email is optional.
+
+Client email uniqueness is case-insensitive when provided.
+
+Multiple clients can exist without email.
+
+Sales can be created with or without a registered client.
+
 Inactive users cannot log in.
 
 Invalid email and invalid password return the same error message for security reasons.
@@ -388,4 +435,4 @@ Users can only access routes allowed for their role.
 
 `SUPERVISOR` can manage products, categories, sales cancellation, and inventory operations.
 
-`EMPLOYEE` can perform operational tasks such as creating sales and reading allowed resources.
+`EMPLOYEE` can perform operational tasks such as creating sales, registering clients, and reading allowed resources.
