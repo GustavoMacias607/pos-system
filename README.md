@@ -19,6 +19,10 @@ This project is designed as a professional full-stack learning project focused o
 - Client activation and deactivation
 - Optional client email
 - Case-insensitive unique client email validation
+- Supplier management
+- Supplier activation and deactivation
+- Optional supplier email
+- Case-insensitive unique supplier email validation
 - Password hashing with bcrypt
 - Login with email and password
 - JWT access token authentication
@@ -81,6 +85,7 @@ This project is designed as a professional full-stack learning project focused o
 - [Inventory API](./docs/inventory-api.md)
 - [Users API](./docs/users-api.md)
 - [Clients API](./docs/clients-api.md)
+- [Suppliers API](./docs/suppliers-api.md)
 - [Auth API](./docs/auth-api.md)
 
 ## Available API Modules
@@ -186,6 +191,38 @@ Main features:
 - Validate unique client email
 - Support clients without email
 - Soft delete clients using `active = false`
+
+### Suppliers
+
+```http
+/api/suppliers
+```
+
+Available endpoints:
+
+```http
+GET /api/suppliers
+GET /api/suppliers/:id
+POST /api/suppliers
+PUT /api/suppliers/:id
+DELETE /api/suppliers/:id
+PATCH /api/suppliers/:id/activate
+```
+
+Main features:
+
+- Create suppliers
+- List suppliers
+- Get supplier by ID
+- Update suppliers
+- Activate suppliers
+- Deactivate suppliers
+- Store an optional supplier contact name
+- Validate required supplier fields
+- Validate supplier email format
+- Validate unique supplier email without case sensitivity
+- Support multiple suppliers without email
+- Soft delete suppliers using `active = false`
 
 ### Auth
 
@@ -371,6 +408,7 @@ Main database-related tables:
 - `categories`
 - `users`
 - `clients`
+- `suppliers`
 - `user_sessions`
 - `user_backup_codes`
 - `user_identities`
@@ -422,6 +460,14 @@ Client email is optional.
 Client email uniqueness is case-insensitive when provided.
 
 Multiple clients can exist without email.
+
+Suppliers are soft deleted by setting `active = false`.
+
+Supplier email is optional.
+
+Supplier email uniqueness is case-insensitive when provided.
+
+Multiple suppliers can exist without email.
 
 Sales can be created with or without a registered client.
 
