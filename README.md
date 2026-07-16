@@ -23,6 +23,9 @@ This project is designed as a professional full-stack learning project focused o
 - Supplier activation and deactivation
 - Optional supplier email
 - Case-insensitive unique supplier email validation
+- Supplier-product relationship management
+- Supplier-specific product codes and unit costs
+- Supplier-product relationship activation and deactivation
 - Password hashing with bcrypt
 - Login with email and password
 - JWT access token authentication
@@ -86,6 +89,7 @@ This project is designed as a professional full-stack learning project focused o
 - [Users API](./docs/users-api.md)
 - [Clients API](./docs/clients-api.md)
 - [Suppliers API](./docs/suppliers-api.md)
+- [Supplier Products API](./docs/supplier-products-api.md)
 - [Auth API](./docs/auth-api.md)
 
 ## Available API Modules
@@ -223,6 +227,38 @@ Main features:
 - Validate unique supplier email without case sensitivity
 - Support multiple suppliers without email
 - Soft delete suppliers using `active = false`
+
+### Supplier Products
+
+```http
+/api/suppliers/:supplierId/products
+```
+
+Available endpoints:
+
+```http
+GET /api/suppliers/:supplierId/products
+GET /api/suppliers/:supplierId/products/:productId
+POST /api/suppliers/:supplierId/products
+PUT /api/suppliers/:supplierId/products/:productId
+DELETE /api/suppliers/:supplierId/products/:productId
+PATCH /api/suppliers/:supplierId/products/:productId/activate
+```
+
+Main features:
+
+- Associate multiple products with a supplier
+- Associate the same product with multiple suppliers
+- Store supplier-specific product codes
+- Store the current unit cost for each supplier-product relationship
+- Validate unique supplier-product pairs
+- Validate supplier product codes without case sensitivity
+- Preserve fields that are not included in partial updates
+- Remove optional supplier product codes using `null`
+- Activate and deactivate supplier-product relationships
+- Prevent relationship creation or activation when the supplier or product is inactive
+- Allow all authenticated roles to read supplier-product relationships
+- Restrict relationship management to `ADMIN` and `SUPERVISOR`
 
 ### Auth
 
@@ -409,6 +445,7 @@ Main database-related tables:
 - `users`
 - `clients`
 - `suppliers`
+- `supplier_products`
 - `user_sessions`
 - `user_backup_codes`
 - `user_identities`
@@ -469,6 +506,20 @@ Supplier email uniqueness is case-insensitive when provided.
 
 Multiple suppliers can exist without email.
 
+Suppliers and products have a many-to-many relationship through `supplier_products`.
+
+A supplier-product pair can exist only once.
+
+Supplier product codes are optional and unique within each supplier without case sensitivity.
+
+Each supplier-product relationship stores the supplier's current unit cost.
+
+Supplier-product relationships are soft deleted by setting `active = false`.
+
+Inactive supplier-product relationships must be reactivated instead of recreated.
+
+Supplier-product relationships cannot be created or activated when the supplier or product is inactive.
+
 Sales can be created with or without a registered client.
 
 Inactive users cannot log in.
@@ -479,6 +530,6 @@ Users can only access routes allowed for their role.
 
 `ADMIN` has full administrative access.
 
-`SUPERVISOR` can manage products, categories, sales cancellation, and inventory operations.
+`SUPERVISOR` can manage products, categories, supplier-product relationships, sales cancellation, and inventory operations.
 
-`EMPLOYEE` can perform operational tasks such as creating sales, registering clients, and reading allowed resources.
+`EMPLOYEE` can perform operational tasks such as creating sales, registering clients, and reading allowed resources, including supplier-product relationships.
