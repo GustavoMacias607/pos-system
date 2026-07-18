@@ -195,6 +195,28 @@ const decreaseStock = async (client, productId, quantity) => {
     return result.rows[0];
 };
 
+const decreaseStockIfAvailable = async (
+    client,
+    productId,
+    quantity
+) => {
+    const result = await client.query(
+        `
+        UPDATE products
+        SET stock = stock - $1
+        WHERE id = $2
+          AND stock >= $1
+        RETURNING *
+        `,
+        [
+            quantity,
+            productId
+        ]
+    );
+
+    return result.rows[0];
+};
+
 
 module.exports = {
     findAll,
@@ -207,5 +229,6 @@ module.exports = {
     deactivate,
     activate,
     increaseStock,
-    decreaseStock
+    decreaseStock,
+    decreaseStockIfAvailable
 };

@@ -7,16 +7,18 @@ const createMovement = async (client, movement) => {
             product_id,
             type,
             quantity,
-            reason
+            reason,
+            purchase_id
         )
-        VALUES ($1, $2, $3, $4)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         `,
         [
             movement.productId,
             movement.type,
             movement.quantity,
-            movement.reason
+            movement.reason,
+            movement.purchaseId ?? null
         ]
     );
 

@@ -134,6 +134,27 @@ const activate = async (supplierId, productId) => {
     return result.rows[0];
 };
 
+
+const updateUnitCost = async (client, supplierId, productId, unitCost) => {
+    const result = await client.query(
+        `
+        UPDATE supplier_products
+        SET unit_cost = $1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE supplier_id = $2
+        AND product_id = $3
+        AND active = true
+        RETURNING *
+        `,
+        [
+            unitCost,
+            supplierId,
+            productId
+        ]
+    );
+    return result.rows[0];
+};
+
 module.exports = {
     findAllBySupplierId,
     findBySupplierAndProduct,
@@ -141,5 +162,6 @@ module.exports = {
     create,
     update,
     deactivate,
-    activate
+    activate,
+    updateUnitCost
 };

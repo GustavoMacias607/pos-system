@@ -26,6 +26,16 @@ This project is designed as a professional full-stack learning project focused o
 - Supplier-product relationship management
 - Supplier-specific product codes and unit costs
 - Supplier-product relationship activation and deactivation
+- Purchase management
+- Purchase detail registration
+- Optional supplier invoice tracking
+- Case-insensitive invoice uniqueness per supplier
+- Automatic stock increase after purchases
+- Purchase cancellation
+- Automatic stock decrease after purchase cancellation
+- Supplier return inventory movements
+- Supplier-product unit cost updates after purchases
+- Transactional purchase creation and cancellation
 - Password hashing with bcrypt
 - Login with email and password
 - JWT access token authentication
@@ -90,6 +100,7 @@ This project is designed as a professional full-stack learning project focused o
 - [Clients API](./docs/clients-api.md)
 - [Suppliers API](./docs/suppliers-api.md)
 - [Supplier Products API](./docs/supplier-products-api.md)
+- [Purchases API](./docs/purchases-api.md)
 - [Auth API](./docs/auth-api.md)
 
 ## Available API Modules
@@ -259,6 +270,41 @@ Main features:
 - Prevent relationship creation or activation when the supplier or product is inactive
 - Allow all authenticated roles to read supplier-product relationships
 - Restrict relationship management to `ADMIN` and `SUPERVISOR`
+
+### Purchases
+
+```http
+/api/purchases
+```
+
+Available endpoints:
+
+```http
+GET /api/purchases
+GET /api/purchases/:id
+POST /api/purchases
+PATCH /api/purchases/:id/cancel
+```
+
+Main features:
+
+- Create completed supplier purchases
+- List purchases
+- Get purchases with their details
+- Store optional supplier invoice numbers
+- Validate invoice uniqueness per supplier without case sensitivity
+- Calculate line totals, subtotal, tax, and total on the backend
+- Register the authenticated user who created the purchase
+- Increase product stock after purchase creation
+- Create positive `PURCHASE` inventory movements
+- Update the current supplier-product unit cost
+- Cancel completed purchases
+- Decrease stock safely during purchase cancellation
+- Create negative `SUPPLIER_RETURN` inventory movements
+- Prevent cancellation when current stock is insufficient
+- Preserve cancelled purchases and their details for audit purposes
+- Execute creation and cancellation inside database transactions
+- Restrict purchase access to `ADMIN` and `SUPERVISOR`
 
 ### Auth
 
@@ -446,6 +492,8 @@ Main database-related tables:
 - `clients`
 - `suppliers`
 - `supplier_products`
+- `purchases`
+- `purchase_details`
 - `user_sessions`
 - `user_backup_codes`
 - `user_identities`
@@ -533,3 +581,29 @@ Users can only access routes allowed for their role.
 `SUPERVISOR` can manage products, categories, supplier-product relationships, sales cancellation, and inventory operations.
 
 `EMPLOYEE` can perform operational tasks such as creating sales, registering clients, and reading allowed resources, including supplier-product relationships.
+
+Purchase creation and purchase cancellation are executed using database transactions to keep purchases, details, stock, inventory movements, and supplier costs consistent.
+
+Purchases are created directly with `COMPLETED` status.
+
+Completed purchases are immutable. Incorrect purchases must be cancelled and recreated instead of being edited or deleted.
+
+Purchase invoice numbers are optional and unique per supplier without case sensitivity.
+
+Multiple purchases without an invoice number are allowed.
+
+A purchase can only include active products associated with an active supplier through active supplier-product relationships.
+
+Purchase totals are calculated by the backend using item quantities, unit costs, and tax amounts.
+
+Creating a purchase increases product stock and creates positive `PURCHASE` inventory movements.
+
+Creating a purchase updates the current unit cost stored in the supplier-product relationship.
+
+Cancelling a purchase decreases product stock and creates negative `SUPPLIER_RETURN` inventory movements.
+
+A purchase cannot be cancelled when the current stock is insufficient to reverse all purchased quantities.
+
+Cancelled purchases and their details remain stored for audit purposes.
+
+Purchase endpoints are restricted to users with the `ADMIN` or `SUPERVISOR` role.

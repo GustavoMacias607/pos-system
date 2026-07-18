@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth.routes');
 const clientRoutes = require('./routes/client.routes');
 const supplierRoutes = require('./routes/supplier.routes');
 const supplierProductRoutes = require('./routes/supplierProduct.routes');
+const purchaseRoutes = require('./routes/purchase.routes');
 
 const errorHandler = require('./middlewares/errorHandler.middleware');
 
@@ -31,6 +32,7 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/suppliers/:supplierId/products', supplierProductRoutes);
 app.use('/api/suppliers', supplierRoutes);
+app.use('/api/purchase', purchaseRoutes);
 
 app.use(errorHandler);
 
