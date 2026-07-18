@@ -1,44 +1,31 @@
-// ==============================
-// External libraries
-// ==============================
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
 const { OAuth2Client } = require('google-auth-library');
+
 const {
     generateSecret,
     generateURI,
     verify
 } = require('otplib');
 
-// ==============================
-// Constants
-// ==============================
 const { AUTH_PROVIDERS } = require('../constants/authProviders');
 
-// ==============================
-// Repositories
-// ==============================
 const userRepository = require('../repositories/user.repository');
 const userSessionRepository = require('../repositories/userSession.repository');
 const userBackupCodeRepository = require('../repositories/userBackupCode.repository');
 const userIdentityRepository = require('../repositories/userIdentity.repository');
 
-// ==============================
-// Errors and validators
-// ==============================
 const AppError = require('../errors/AppError');
 const { validateLoginInput } = require('../validators/auth.validator');
 
-// ==============================
-// External clients
-// ==============================
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const googleClient = new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID
+);
 
-// ==============================
-// Token helpers
-// ==============================
+// Token and session helpers
+
 const generateAccessToken = (user) => {
     return jwt.sign(
         {
@@ -47,7 +34,8 @@ const generateAccessToken = (user) => {
         },
         process.env.JWT_SECRET,
         {
-            expiresIn: process.env.JWT_EXPIRES_IN || '1d'
+            expiresIn:
+                process.env.JWT_EXPIRES_IN || '1d'
         }
     );
 };
@@ -65,10 +53,13 @@ const hashRefreshToken = (refreshToken) => {
 
 const getRefreshTokenExpiresAt = () => {
     const expiresAt = new Date();
+
     expiresAt.setDate(expiresAt.getDate() + 7);
+
     return expiresAt;
 };
 
+// Explicitly whitelist public fields to avoid exposing authentication secrets.
 const buildAuthUserResponse = (user) => {
     return {
         id: user.id,
@@ -81,11 +72,16 @@ const buildAuthUserResponse = (user) => {
     };
 };
 
-const createSessionAndTokens = async (user, metadata = {}) => {
+const createSessionAndTokens = async (
+    user,
+    metadata = {}
+) => {
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken();
-    const refreshTokenHash = hashRefreshToken(refreshToken);
+    const refreshTokenHash =
+        hashRefreshToken(refreshToken);
 
+    // Only the hash is persisted so a session-table leak cannot expose usable tokens.
     await userSessionRepository.create({
         userId: user.id,
         refreshTokenHash,
@@ -94,6 +90,7 @@ const createSessionAndTokens = async (user, metadata = {}) => {
         expiresAt: getRefreshTokenExpiresAt()
     });
 
+    // The raw refresh token is returned only when the session is created.
     return {
         user: buildAuthUserResponse(user),
         accessToken,
@@ -101,18 +98,27 @@ const createSessionAndTokens = async (user, metadata = {}) => {
     };
 };
 
-// ==============================
 // Backup code helpers
-// ==============================
+
 const generateBackupCode = () => {
-    const partOne = crypto.randomBytes(2).toString('hex').toUpperCase();
-    const partTwo = crypto.randomBytes(2).toString('hex').toUpperCase();
+    const partOne = crypto
+        .randomBytes(2)
+        .toString('hex')
+        .toUpperCase();
+
+    const partTwo = crypto
+        .randomBytes(2)
+        .toString('hex')
+        .toUpperCase();
 
     return `${partOne}-${partTwo}`;
 };
 
 const generateBackupCodes = (amount = 10) => {
-    return Array.from({ length: amount }, () => generateBackupCode());
+    return Array.from(
+        { length: amount },
+        () => generateBackupCode()
+    );
 };
 
 const hashBackupCode = (backupCode) => {
@@ -122,56 +128,86 @@ const hashBackupCode = (backupCode) => {
         .digest('hex');
 };
 
-const verifyBackupCode = async (userId, backupCode) => {
-    const normalizedBackupCode = backupCode.trim().toUpperCase();
-    const backupCodeHash = hashBackupCode(normalizedBackupCode);
+const verifyBackupCode = async (
+    userId,
+    backupCode
+) => {
+    const normalizedBackupCode =
+        backupCode.trim().toUpperCase();
 
-    const unusedBackupCodes = await userBackupCodeRepository.findUnusedByUserId(userId);
+    const backupCodeHash =
+        hashBackupCode(normalizedBackupCode);
 
-    const matchingBackupCode = unusedBackupCodes.find((storedBackupCode) => {
-        return storedBackupCode.code_hash === backupCodeHash;
-    });
+    const unusedBackupCodes =
+        await userBackupCodeRepository.findUnusedByUserId(
+            userId
+        );
+
+    const matchingBackupCode = unusedBackupCodes.find(
+        (storedBackupCode) => {
+            return storedBackupCode.code_hash
+                === backupCodeHash;
+        }
+    );
 
     if (!matchingBackupCode) {
         return false;
     }
 
-    await userBackupCodeRepository.markAsUsed(matchingBackupCode.id);
+    // Backup codes are one-time credentials.
+    await userBackupCodeRepository.markAsUsed(
+        matchingBackupCode.id
+    );
 
     return true;
 };
 
-// ==============================
-// Google helpers
-// ==============================
+// Google identity helpers
+
 const verifyGoogleIdToken = async (idToken) => {
     if (!process.env.GOOGLE_CLIENT_ID) {
-        throw new AppError('Google client id is not configured', 500);
+        throw new AppError(
+            'Google client id is not configured',
+            500
+        );
     }
 
     let ticket;
 
     try {
+        // The Google library verifies signature, audience and token expiration.
         ticket = await googleClient.verifyIdToken({
             idToken,
             audience: process.env.GOOGLE_CLIENT_ID
         });
-    } catch (error) {
-        throw new AppError('Invalid Google ID token', 401);
+    } catch {
+        throw new AppError(
+            'Invalid Google ID token',
+            401
+        );
     }
 
     const payload = ticket.getPayload();
 
     if (!payload) {
-        throw new AppError('Invalid Google ID token', 401);
+        throw new AppError(
+            'Invalid Google ID token',
+            401
+        );
     }
 
     if (!payload.email) {
-        throw new AppError('Google account email is required', 400);
+        throw new AppError(
+            'Google account email is required',
+            400
+        );
     }
 
     if (!payload.email_verified) {
-        throw new AppError('Google account email is not verified', 403);
+        throw new AppError(
+            'Google account email is not verified',
+            403
+        );
     }
 
     return {
@@ -182,28 +218,41 @@ const verifyGoogleIdToken = async (idToken) => {
     };
 };
 
-// ======================================================
-// LOGIN FLOW #1: Email/password login
-// ======================================================
+// Email and password authentication
+
 const login = async (data, metadata = {}) => {
     validateLoginInput(data);
 
-    const user = await userRepository.findByEmailWithPassword(data.email);
+    const user =
+        await userRepository.findByEmailWithPassword(
+            data.email
+        );
 
+    // Use the same response for both cases to reduce account enumeration.
     if (!user) {
-        throw new AppError('Invalid email or password', 401);
+        throw new AppError(
+            'Invalid email or password',
+            401
+        );
     }
 
     if (!user.active) {
         throw new AppError('User is inactive', 403);
     }
 
-    const passwordMatches = await bcrypt.compare(data.password, user.password_hash);
+    const passwordMatches = await bcrypt.compare(
+        data.password,
+        user.password_hash
+    );
 
     if (!passwordMatches) {
-        throw new AppError('Invalid email or password', 401);
+        throw new AppError(
+            'Invalid email or password',
+            401
+        );
     }
 
+    // Do not create a session until the second factor is verified.
     if (user.two_factor_enabled) {
         return {
             requiresTwoFactor: true,
@@ -214,27 +263,41 @@ const login = async (data, metadata = {}) => {
     return createSessionAndTokens(user, metadata);
 };
 
-// ======================================================
-// Session flow: refresh token and logout
-// ======================================================
-const refreshAccessToken = async (data) => {
-    const refreshTokenHash = hashRefreshToken(data.refreshToken);
+// Session lifecycle
 
-    const session = await userSessionRepository.findByRefreshTokenHash(refreshTokenHash);
+const refreshAccessToken = async (data) => {
+    const refreshTokenHash =
+        hashRefreshToken(data.refreshToken);
+
+    const session =
+        await userSessionRepository.findByRefreshTokenHash(
+            refreshTokenHash
+        );
 
     if (!session) {
-        throw new AppError('Invalid refresh token', 401);
+        throw new AppError(
+            'Invalid refresh token',
+            401
+        );
     }
 
     if (session.revoked_at) {
-        throw new AppError('Refresh token has been revoked', 401);
+        throw new AppError(
+            'Refresh token has been revoked',
+            401
+        );
     }
 
     if (new Date(session.expires_at) < new Date()) {
-        throw new AppError('Refresh token has expired', 401);
+        throw new AppError(
+            'Refresh token has expired',
+            401
+        );
     }
 
-    const user = await userRepository.findById(session.user_id);
+    const user = await userRepository.findById(
+        session.user_id
+    );
 
     if (!user) {
         throw new AppError('User not found', 401);
@@ -250,16 +313,26 @@ const refreshAccessToken = async (data) => {
 };
 
 const logout = async (data) => {
-    const refreshTokenHash = hashRefreshToken(data.refreshToken);
+    const refreshTokenHash =
+        hashRefreshToken(data.refreshToken);
 
-    const session = await userSessionRepository.findByRefreshTokenHash(refreshTokenHash);
+    const session =
+        await userSessionRepository.findByRefreshTokenHash(
+            refreshTokenHash
+        );
 
     if (!session) {
-        throw new AppError('Invalid refresh token', 401);
+        throw new AppError(
+            'Invalid refresh token',
+            401
+        );
     }
 
     if (session.revoked_at) {
-        throw new AppError('Refresh token has already been revoked', 401);
+        throw new AppError(
+            'Refresh token has already been revoked',
+            401
+        );
     }
 
     await userSessionRepository.revoke(session.id);
@@ -269,23 +342,32 @@ const logout = async (data) => {
     };
 };
 
-// ======================================================
-// 2FA setup flow: enable/disable TOTP authentication
-// ======================================================
+// Two-factor authentication setup
+
 const setupTwoFactor = async (userId) => {
-    const userTwoFactor = await userRepository.findTwoFactorByUserId(userId);
+    const userTwoFactor =
+        await userRepository.findTwoFactorByUserId(
+            userId
+        );
 
     if (!userTwoFactor) {
         throw new AppError('User not found', 404);
     }
 
     if (userTwoFactor.two_factor_enabled) {
-        throw new AppError('Two-factor authentication is already enabled', 400);
+        throw new AppError(
+            'Two-factor authentication is already enabled',
+            400
+        );
     }
 
     const secret = generateSecret();
 
-    await userRepository.updateTwoFactorSecret(userId, secret);
+    // Store the pending secret, but do not enable 2FA until possession is verified.
+    await userRepository.updateTwoFactorSecret(
+        userId,
+        secret
+    );
 
     const otpauthUrl = generateURI({
         issuer: 'POS System',
@@ -293,7 +375,8 @@ const setupTwoFactor = async (userId) => {
         secret
     });
 
-    const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
+    const qrCodeDataUrl =
+        await QRCode.toDataURL(otpauthUrl);
 
     return {
         secret,
@@ -302,19 +385,31 @@ const setupTwoFactor = async (userId) => {
     };
 };
 
-const verifyTwoFactorSetup = async (userId, data) => {
-    const userTwoFactor = await userRepository.findTwoFactorByUserId(userId);
+const verifyTwoFactorSetup = async (
+    userId,
+    data
+) => {
+    const userTwoFactor =
+        await userRepository.findTwoFactorByUserId(
+            userId
+        );
 
     if (!userTwoFactor) {
         throw new AppError('User not found', 404);
     }
 
     if (!userTwoFactor.two_factor_secret) {
-        throw new AppError('Two-factor authentication setup has not been started', 400);
+        throw new AppError(
+            'Two-factor authentication setup has not been started',
+            400
+        );
     }
 
     if (userTwoFactor.two_factor_enabled) {
-        throw new AppError('Two-factor authentication is already enabled', 400);
+        throw new AppError(
+            'Two-factor authentication is already enabled',
+            400
+        );
     }
 
     const result = await verify({
@@ -323,40 +418,65 @@ const verifyTwoFactorSetup = async (userId, data) => {
     });
 
     if (!result.valid) {
-        throw new AppError('Invalid two-factor token', 401);
+        throw new AppError(
+            'Invalid two-factor token',
+            401
+        );
     }
 
-    const updatedUser = await userRepository.enableTwoFactor(userId);
+    const updatedUser =
+        await userRepository.enableTwoFactor(userId);
 
-    await userBackupCodeRepository.deleteByUserId(userId);
+    await userBackupCodeRepository.deleteByUserId(
+        userId
+    );
 
     const backupCodes = generateBackupCodes();
-    const backupCodeHashes = backupCodes.map(hashBackupCode);
+    const backupCodeHashes =
+        backupCodes.map(hashBackupCode);
 
-    await userBackupCodeRepository.createMany(userId, backupCodeHashes);
+    await userBackupCodeRepository.createMany(
+        userId,
+        backupCodeHashes
+    );
 
+    // Plaintext backup codes are returned once; only their hashes remain stored.
     return {
         id: updatedUser.id,
         email: updatedUser.email,
-        two_factor_enabled: updatedUser.two_factor_enabled,
-        two_factor_enabled_at: updatedUser.two_factor_enabled_at,
+        two_factor_enabled:
+            updatedUser.two_factor_enabled,
+        two_factor_enabled_at:
+            updatedUser.two_factor_enabled_at,
         backupCodes
     };
 };
 
-const disableTwoFactor = async (userId, data) => {
-    const userTwoFactor = await userRepository.findTwoFactorByUserId(userId);
+const disableTwoFactor = async (
+    userId,
+    data
+) => {
+    const userTwoFactor =
+        await userRepository.findTwoFactorByUserId(
+            userId
+        );
 
     if (!userTwoFactor) {
         throw new AppError('User not found', 404);
     }
 
     if (!userTwoFactor.two_factor_enabled) {
-        throw new AppError('Two-factor authentication is not enabled', 400);
+        throw new AppError(
+            'Two-factor authentication is not enabled',
+            400
+        );
     }
 
     if (!userTwoFactor.two_factor_secret) {
-        throw new AppError('Two-factor authentication is not configured', 400);
+        throw new AppError(
+            'Two-factor authentication is not configured',
+            400
+        );
     }
 
     const result = await verify({
@@ -365,37 +485,56 @@ const disableTwoFactor = async (userId, data) => {
     });
 
     if (!result.valid) {
-        throw new AppError('Invalid two-factor token', 401);
+        throw new AppError(
+            'Invalid two-factor token',
+            401
+        );
     }
 
-    const updatedUser = await userRepository.disableTwoFactor(userId);
+    const updatedUser =
+        await userRepository.disableTwoFactor(userId);
 
-    await userBackupCodeRepository.deleteByUserId(userId);
+    await userBackupCodeRepository.deleteByUserId(
+        userId
+    );
 
     return {
         id: updatedUser.id,
         email: updatedUser.email,
-        two_factor_enabled: updatedUser.two_factor_enabled,
-        two_factor_enabled_at: updatedUser.two_factor_enabled_at
+        two_factor_enabled:
+            updatedUser.two_factor_enabled,
+        two_factor_enabled_at:
+            updatedUser.two_factor_enabled_at
     };
 };
 
-// ======================================================
-// LOGIN FLOW #2: Finish login with 2FA or backup code
-// ======================================================
-const verifyTwoFactorLogin = async (data, metadata = {}) => {
-    const userTwoFactor = await userRepository.findTwoFactorByUserId(data.userId);
+// Complete a pending login with TOTP or a backup code
+
+const verifyTwoFactorLogin = async (
+    data,
+    metadata = {}
+) => {
+    const userTwoFactor =
+        await userRepository.findTwoFactorByUserId(
+            data.userId
+        );
 
     if (!userTwoFactor) {
         throw new AppError('User not found', 404);
     }
 
     if (!userTwoFactor.two_factor_enabled) {
-        throw new AppError('Two-factor authentication is not enabled', 400);
+        throw new AppError(
+            'Two-factor authentication is not enabled',
+            400
+        );
     }
 
     if (!userTwoFactor.two_factor_secret) {
-        throw new AppError('Two-factor authentication is not configured', 400);
+        throw new AppError(
+            'Two-factor authentication is not configured',
+            400
+        );
     }
 
     let isValidSecondFactor = false;
@@ -407,17 +546,23 @@ const verifyTwoFactorLogin = async (data, metadata = {}) => {
         });
 
         isValidSecondFactor = result.valid;
-    }
-
-    if (data.backupCode) {
-        isValidSecondFactor = await verifyBackupCode(data.userId, data.backupCode);
+    } else if (data.backupCode) {
+        isValidSecondFactor = await verifyBackupCode(
+            data.userId,
+            data.backupCode
+        );
     }
 
     if (!isValidSecondFactor) {
-        throw new AppError('Invalid two-factor token or backup code', 401);
+        throw new AppError(
+            'Invalid two-factor token or backup code',
+            401
+        );
     }
 
-    const user = await userRepository.findById(data.userId);
+    const user = await userRepository.findById(
+        data.userId
+    );
 
     if (!user) {
         throw new AppError('User not found', 404);
@@ -430,37 +575,55 @@ const verifyTwoFactorLogin = async (data, metadata = {}) => {
     return createSessionAndTokens(user, metadata);
 };
 
-// ======================================================
-// LOGIN FLOW #3: Google login
-// ======================================================
-const loginWithGoogle = async (data, metadata = {}) => {
-    const googleUser = await verifyGoogleIdToken(data.idToken);
+// Google authentication
 
-    let identity = await userIdentityRepository.findByProviderAndProviderUserId(
-        AUTH_PROVIDERS.GOOGLE,
-        googleUser.googleId
-    );
+const loginWithGoogle = async (
+    data,
+    metadata = {}
+) => {
+    const googleUser =
+        await verifyGoogleIdToken(data.idToken);
+
+    let identity =
+        await userIdentityRepository
+            .findByProviderAndProviderUserId(
+                AUTH_PROVIDERS.GOOGLE,
+                googleUser.googleId
+            );
 
     let user;
 
     if (identity) {
-        user = await userRepository.findById(identity.user_id);
+        user = await userRepository.findById(
+            identity.user_id
+        );
     } else {
-        user = await userRepository.findByEmail(googleUser.email);
-
-        if (!user) {
-            throw new AppError('User account does not exist', 404);
-        }
-
-        const existingGoogleIdentity = await userIdentityRepository.findByUserIdAndProvider(
-            user.id,
-            AUTH_PROVIDERS.GOOGLE
+        user = await userRepository.findByEmail(
+            googleUser.email
         );
 
-        if (existingGoogleIdentity) {
-            throw new AppError('User already has a Google account linked', 409);
+        if (!user) {
+            throw new AppError(
+                'User account does not exist',
+                404
+            );
         }
 
+        const existingGoogleIdentity =
+            await userIdentityRepository
+                .findByUserIdAndProvider(
+                    user.id,
+                    AUTH_PROVIDERS.GOOGLE
+                );
+
+        if (existingGoogleIdentity) {
+            throw new AppError(
+                'User already has a Google account linked',
+                409
+            );
+        }
+
+        // Persist the verified provider identifier so future logins do not depend on email matching.
         identity = await userIdentityRepository.create({
             userId: user.id,
             provider: AUTH_PROVIDERS.GOOGLE,
@@ -480,9 +643,6 @@ const loginWithGoogle = async (data, metadata = {}) => {
     return createSessionAndTokens(user, metadata);
 };
 
-// ==============================
-// Exports
-// ==============================
 module.exports = {
     login,
     refreshAccessToken,
