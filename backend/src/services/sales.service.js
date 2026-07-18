@@ -8,38 +8,53 @@ const { validateSaleInput } = require('../validators/sale.validator');
 const createSale = async (data) => {
     validateSaleInput(data);
 
+    // Merge repeated products so validation and stock updates use aggregate quantities.
     const items = normalizeItems(data.items);
-    // 1. Validaciones previas
-    const productIds = items.map(item => item.productId);
+    const productIds = items.map((item) => item.productId);
 
-    const products = await productRepository.findProductsByIds(productIds);
+    // Perform read-only validations before acquiring a client to keep the transaction short.
+    const products = await productRepository.findProductsByIds(
+        productIds
+    );
 
     if (products.length !== productIds.length) {
-        throw new AppError('One or more products not found', 404);
+        throw new AppError(
+            'One or more products not found',
+            404
+        );
     }
 
-    const inactiveProduct = products.find(product => !product.active);
+    const inactiveProduct = products.find(
+        (product) => !product.active
+    );
 
     if (inactiveProduct) {
-        throw new AppError(`Product ${inactiveProduct.name} is inactive`, 400);
+        throw new AppError(
+            `Product ${inactiveProduct.name} is inactive`,
+            400
+        );
     }
 
     const productsMap = new Map(
-        products.map(product => [product.id, { ...product }])
+        products.map((product) => [
+            product.id,
+            { ...product }
+        ])
     );
 
+    // This pre-check provides early feedback; stock is checked again atomically when written.
     for (const item of items) {
         const product = productsMap.get(item.productId);
 
         if (item.quantity > product.stock) {
-            throw new AppError(`Insufficient stock for product ${product.name}`, 409);
+            throw new AppError(
+                `Insufficient stock for product ${product.name}`,
+                409
+            );
         }
-
-
     }
 
     const subtotal = calculateSubtotal(items, productsMap);
-
     const discountTotal = 0;
     const tax = 0;
     const total = subtotal;
@@ -53,15 +68,19 @@ const createSale = async (data) => {
         status: 'COMPLETED'
     };
 
-    // 2. Escritura en BD con transacción
+    // All writes share the same client so the sale, stock, and movements commit atomically.
     const client = await pool.connect();
 
     try {
         await client.query('BEGIN');
 
-        const sale = await salesRepository.createSale(client, saleData);
+        const sale = await salesRepository.createSale(
+            client,
+            saleData
+        );
 
-        const saleDetails = items.map(item => {
+        // Store product and pricing snapshots so historical sales remain unchanged.
+        const saleDetails = items.map((item) => {
             const product = productsMap.get(item.productId);
             const unitPrice = Number(product.price);
             const discount = 0;
@@ -73,23 +92,40 @@ const createSale = async (data) => {
                 quantity: item.quantity,
                 unitPrice,
                 discount,
-                lineTotal: unitPrice * item.quantity - discount
+                lineTotal:
+                    unitPrice * item.quantity - discount
             };
         });
 
         const createdDetails = [];
 
         for (const detail of saleDetails) {
-            const createdDetail = await salesRepository.createSaleDetail(client, detail);
+            const createdDetail =
+                await salesRepository.createSaleDetail(
+                    client,
+                    detail
+                );
+
             createdDetails.push(createdDetail);
         }
 
         for (const item of items) {
-            await productRepository.decreaseStock(
-                client,
-                item.productId,
-                item.quantity
-            );
+            // Recheck and decrease stock atomically to prevent overselling.
+            const updatedProduct =
+                await productRepository.decreaseStockIfAvailable(
+                    client,
+                    item.productId,
+                    item.quantity
+                );
+
+            if (!updatedProduct) {
+                const product = productsMap.get(item.productId);
+
+                throw new AppError(
+                    `Insufficient stock for product ${product.name}`,
+                    409
+                );
+            }
         }
 
         const createdMovements = [];
@@ -97,15 +133,21 @@ const createSale = async (data) => {
         for (const item of items) {
             const product = productsMap.get(item.productId);
 
-            const movement = await inventoryRepository.createMovement(client, {
-                productId: item.productId,
-                type: 'SALE',
-                quantity: -item.quantity,
-                reason: `Sale #${sale.id} - ${product.name}`
-            });
+            const movement =
+                await inventoryRepository.createMovement(
+                    client,
+                    {
+                        productId: item.productId,
+                        type: 'SALE',
+                        quantity: -item.quantity,
+                        reason:
+                            `Sale #${sale.id} - ${product.name}`
+                    }
+                );
 
             createdMovements.push(movement);
         }
+
         await client.query('COMMIT');
 
         return {
@@ -119,18 +161,20 @@ const createSale = async (data) => {
     } finally {
         client.release();
     }
-}
+};
 
 const calculateSubtotal = (items, productsMap) => {
     let subtotal = 0;
 
     for (const item of items) {
         const product = productsMap.get(item.productId);
-        subtotal += Number(product.price) * item.quantity;
+
+        subtotal +=
+            Number(product.price) * item.quantity;
     }
 
     return subtotal;
-}
+};
 
 const normalizeItems = (items) => {
     const itemsMap = new Map();
@@ -141,16 +185,17 @@ const normalizeItems = (items) => {
         if (existingItem) {
             existingItem.quantity += item.quantity;
         } else {
-            itemsMap.set(item.productId, { ...item });
+            itemsMap.set(
+                item.productId,
+                { ...item }
+            );
         }
     }
 
     return [...itemsMap.values()];
 };
 
-
 const cancelSale = async (id) => {
-
     const sale = await salesRepository.findById(id);
 
     if (!sale) {
@@ -161,15 +206,29 @@ const cancelSale = async (id) => {
 
     try {
         await client.query('BEGIN');
-        const updateSaleStatus = await salesRepository.cancelCompletedSale(client, sale.id);
 
-        if (!updateSaleStatus) {
-            throw new AppError('Sale is already cancelled', 409);
+        // Claim the cancellation atomically to prevent processing it twice.
+        const cancelledSale =
+            await salesRepository.cancelCompletedSale(
+                client,
+                sale.id
+            );
+
+        if (!cancelledSale) {
+            throw new AppError(
+                'Sale is already cancelled',
+                409
+            );
         }
 
-        const saleDetails = await salesRepository.findDetailsBySaleId(client, sale.id);
+        const saleDetails =
+            await salesRepository.findDetailsBySaleId(
+                client,
+                sale.id
+            );
 
         const createdMovements = [];
+
         for (const detail of saleDetails) {
             await productRepository.increaseStock(
                 client,
@@ -177,12 +236,18 @@ const cancelSale = async (id) => {
                 detail.quantity
             );
 
-            const movement = await inventoryRepository.createMovement(client, {
-                productId: detail.product_id,
-                type: 'CUSTOMER_RETURN',
-                quantity: detail.quantity,
-                reason: `Cancelled sale #${sale.id} - ${detail.product_name}`
-            });
+            // Customer returns restore inventory, so their movement quantity is positive.
+            const movement =
+                await inventoryRepository.createMovement(
+                    client,
+                    {
+                        productId: detail.product_id,
+                        type: 'CUSTOMER_RETURN',
+                        quantity: detail.quantity,
+                        reason:
+                            `Cancelled sale #${sale.id} - ${detail.product_name}`
+                    }
+                );
 
             createdMovements.push(movement);
         }
@@ -190,10 +255,9 @@ const cancelSale = async (id) => {
         await client.query('COMMIT');
 
         return {
-            sale: updateSaleStatus,
+            sale: cancelledSale,
             movements: createdMovements
         };
-
     } catch (error) {
         await client.query('ROLLBACK');
         throw error;
@@ -203,7 +267,7 @@ const cancelSale = async (id) => {
 };
 
 const getAllSales = async () => {
-    return await salesRepository.findAll();
+    return salesRepository.findAll();
 };
 
 const getSaleById = async (id) => {
@@ -213,7 +277,11 @@ const getSaleById = async (id) => {
         throw new AppError('Sale not found', 404);
     }
 
-    const details = await salesRepository.findDetailsBySaleId(pool, id);
+    const details =
+        await salesRepository.findDetailsBySaleId(
+            pool,
+            id
+        );
 
     return {
         ...sale,
