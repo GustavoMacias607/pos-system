@@ -1,4 +1,7 @@
-const { validateSaleInput } = require('../validators/sale.validator');
+const {
+    validateSaleInput,
+    validateClientIdQuery
+} = require('../validators/sale.validator');
 
 const validateSaleData = (req, res, next) => {
     try {
@@ -9,6 +12,19 @@ const validateSaleData = (req, res, next) => {
     }
 };
 
+const validateSalesQuery = (req, res, next) => {
+    try {
+        if (req.query.clientId !== undefined) {
+            validateClientIdQuery(req.query.clientId);
+        }
+
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
-    validateSaleData
+    validateSaleData,
+    validateSalesQuery
 };

@@ -15,6 +15,8 @@ The Clients module supports:
 - Optional email
 - Case-insensitive unique email validation
 - Soft delete using `active = false`
+- Optional association with sales
+- Client sales history
 
 ---
 
@@ -43,6 +45,9 @@ clients
 - `phone` is optional.
 - `address` is optional.
 - Clients are soft deleted by setting `active = false`.
+- A sale can exist without a client.
+- Only active clients can be associated with new sales.
+- Deactivated clients keep their previous sale history.
 
 ---
 
@@ -55,6 +60,12 @@ POST /api/clients
 PUT /api/clients/:id
 DELETE /api/clients/:id
 PATCH /api/clients/:id/activate
+```
+
+Client sales history is retrieved through:
+
+```http
+GET /api/sales?clientId=:id
 ```
 
 ---
@@ -366,11 +377,75 @@ PATCH /api/clients/:id/activate
 
 ---
 
+## Client Sales History
+
+Client sales are retrieved using the Sales API filter:
+
+```http
+GET /api/sales?clientId=1
+```
+
+The client must exist, but it does not need to be active. This allows deactivated clients to keep their historical sales.
+
+### Success response
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 10,
+      "client_id": "1",
+      "client_name": "Juan Pérez",
+      "subtotal": "100.00",
+      "discount_total": "0.00",
+      "tax": "0.00",
+      "total": "100.00",
+      "payment_method": "CASH",
+      "status": "COMPLETED",
+      "created_at": "2026-07-18T18:00:00.000Z"
+    }
+  ]
+}
+```
+
+If the client exists but has no sales:
+
+```json
+{
+  "success": true,
+  "data": []
+}
+```
+
+### Client not found
+
+```json
+{
+  "success": false,
+  "message": "Client not found"
+}
+```
+
+### Invalid client ID
+
+```json
+{
+  "success": false,
+  "message": "Client ID must be a positive integer"
+}
+```
+
+---
+
 ## Business Rules
 
 - Clients are optional for sales.
 - A sale can exist without a registered client.
-- Registered clients can be used later for purchase history.
+- Registered clients can be associated with sales.
+- Only active clients can be associated with new sales.
+- Deactivated clients preserve their previous sales.
+- Client sales can be retrieved using `GET /api/sales?clientId=:id`.
 - Clients are not physically deleted.
 - Deleting a client only sets `active = false`.
 - Client email is optional.

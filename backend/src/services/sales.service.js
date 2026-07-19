@@ -1,12 +1,31 @@
 const pool = require('../config/database');
+const clientRepository = require('../repositories/client.repository');
 const productRepository = require('../repositories/product.repository');
 const salesRepository = require('../repositories/sales.repository');
 const inventoryRepository = require('../repositories/inventory.repository');
 const AppError = require('../errors/AppError');
-const { validateSaleInput } = require('../validators/sale.validator');
+const {
+    validateSaleInput,
+    validateClientIdQuery
+} = require('../validators/sale.validator');
 
 const createSale = async (data) => {
     validateSaleInput(data);
+
+
+    const clientId = data.clientId ?? null;
+
+    if (clientId !== null) {
+        const registeredClient = await clientRepository.findById(clientId);
+
+        if (!registeredClient) {
+            throw new AppError('Client not found', 404);
+        }
+
+        if (!registeredClient.active) {
+            throw new AppError('Client is inactive', 409);
+        }
+    }
 
     // Merge repeated products so validation and stock updates use aggregate quantities.
     const items = normalizeItems(data.items);
@@ -60,6 +79,7 @@ const createSale = async (data) => {
     const total = subtotal;
 
     const saleData = {
+        clientId,
         subtotal,
         discountTotal,
         tax,
@@ -266,8 +286,21 @@ const cancelSale = async (id) => {
     }
 };
 
-const getAllSales = async () => {
-    return salesRepository.findAll();
+const getAllSales = async (clientId) => {
+    if (clientId === undefined) {
+        return salesRepository.findAll();
+    }
+
+    const normalizedClientId = String(clientId);
+    validateClientIdQuery(normalizedClientId);
+
+    const registeredClient = await clientRepository.findById(normalizedClientId);
+
+    if (!registeredClient) {
+        throw new AppError('Client not found', 404);
+    }
+
+    return salesRepository.findByClientId(normalizedClientId);
 };
 
 const getSaleById = async (id) => {

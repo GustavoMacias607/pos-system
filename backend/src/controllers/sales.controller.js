@@ -24,7 +24,7 @@ const cancelSale = asyncHandler(async (req, res) => {
 });
 
 const getSales = asyncHandler(async (req, res) => {
-    const sales = await salesService.getAllSales();
+    const sales = await salesService.getAllSales(req.query.clientId);
 
     res.json({
         success: true,

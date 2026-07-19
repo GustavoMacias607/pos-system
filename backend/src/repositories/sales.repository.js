@@ -8,9 +8,10 @@ const createSale = async (client, saleData) => {
             tax,
             total,
             payment_method,
-            status
+            status,
+            client_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
         `,
         [
@@ -19,7 +20,8 @@ const createSale = async (client, saleData) => {
             saleData.tax,
             saleData.total,
             saleData.paymentMethod,
-            saleData.status
+            saleData.status,
+            saleData.clientId
         ]
     );
 
@@ -74,16 +76,19 @@ const findAll = async () => {
     const result = await pool.query(
         `
         SELECT
-            id,
-            subtotal,
-            discount_total,
-            tax,
-            total,
-            payment_method,
-            status,
-            created_at
-        FROM sales
-        ORDER BY created_at DESC
+            s.id,
+            s.client_id,
+            c.name AS client_name,
+            s.subtotal,
+            s.discount_total,
+            s.tax,
+            s.total,
+            s.payment_method,
+            s.status,
+            s.created_at
+        FROM sales s
+        LEFT JOIN clients c ON c.id = s.client_id
+        ORDER BY s.created_at DESC
         `
     );
 
@@ -94,16 +99,19 @@ const findById = async (id) => {
     const saleResult = await pool.query(
         `
         SELECT
-            id,
-            subtotal,
-            discount_total,
-            tax,
-            total,
-            payment_method,
-            status,
-            created_at
-        FROM sales
-        WHERE id = $1
+            s.id,
+            s.client_id,
+            c.name AS client_name,
+            s.subtotal,
+            s.discount_total,
+            s.tax,
+            s.total,
+            s.payment_method,
+            s.status,
+            s.created_at
+        FROM sales s
+        LEFT JOIN clients c ON c.id = s.client_id
+        WHERE s.id = $1
         `,
         [id]
     );
@@ -134,12 +142,37 @@ const findDetailsBySaleId = async (client, saleId) => {
     return result.rows;
 };
 
+const findByClientId = async (clientId) => {
+    const result = await pool.query(
+        `
+        SELECT
+            s.id,
+            s.client_id,
+            c.name AS client_name,
+            s.subtotal,
+            s.discount_total,
+            s.tax,
+            s.total,
+            s.payment_method,
+            s.status,
+            s.created_at
+        FROM sales s
+        LEFT JOIN clients c ON c.id = s.client_id
+        WHERE s.client_id = $1
+        ORDER BY s.created_at DESC
+        `,
+        [clientId]
+    );
+
+    return result.rows;
+};
+
 module.exports = {
     createSale,
     cancelCompletedSale,
     createSaleDetail,
     findAll,
     findById,
-    findDetailsBySaleId
+    findDetailsBySaleId,
+    findByClientId
 };
-

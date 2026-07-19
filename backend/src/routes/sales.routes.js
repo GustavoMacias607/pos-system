@@ -1,6 +1,9 @@
 const express = require('express');
 const salesController = require('../controllers/sales.controller');
-const { validateSaleData } = require('../middlewares/salesValidation.middleware');
+const {
+    validateSaleData,
+    validateSalesQuery
+} = require('../middlewares/salesValidation.middleware');
 const { authenticate, authorizeRoles } = require('../middlewares/auth.middleware');
 const { USER_ROLES } = require('../constants/userRoles');
 
@@ -9,7 +12,8 @@ const router = express.Router();
 router.get(
     '/',
     authenticate,
-    authorizeRoles(USER_ROLES.ADMIN, USER_ROLES.SUPERVISOR),
+    authorizeRoles(USER_ROLES.ADMIN, USER_ROLES.SUPERVISOR, USER_ROLES.EMPLOYEE),
+    validateSalesQuery,
     salesController.getSales
 );
 

@@ -50,6 +50,9 @@ This project is designed as a professional full-stack learning project focused o
 - Google account linking through user identities
 - Sale creation
 - Sale detail registration
+- Optional client association with sales
+- Anonymous sales without registered clients
+- Sales history filtering by client
 - Stock decrease after sales
 - Sale cancellation
 - Stock restoration after sale cancellation
@@ -206,6 +209,9 @@ Main features:
 - Validate unique client email
 - Support clients without email
 - Soft delete clients using `active = false`
+- Associate active clients with new sales
+- Preserve sale history after client deactivation
+- Retrieve client sales using `GET /api/sales?clientId=:id`
 
 ### Suppliers
 
@@ -388,6 +394,11 @@ Main features:
 - Restore stock after cancellation
 - Execute sale creation inside a database transaction
 - Execute sale cancellation inside a database transaction
+- Create sales with or without a registered client
+- Validate active clients during sale creation
+- Return client information in sale queries
+- Filter sale history by client
+- Preserve anonymous sales using `client_id = NULL`
 
 ### Inventory
 
@@ -607,3 +618,13 @@ A purchase cannot be cancelled when the current stock is insufficient to reverse
 Cancelled purchases and their details remain stored for audit purposes.
 
 Purchase endpoints are restricted to users with the `ADMIN` or `SUPERVISOR` role.
+
+Clients are optional when creating sales.
+
+Only active clients can be associated with new sales.
+
+Sales without a registered client store `client_id = NULL`.
+
+Deactivating a client does not remove or hide previous sales.
+
+Sales can be filtered by client using `GET /api/sales?clientId=:id`.

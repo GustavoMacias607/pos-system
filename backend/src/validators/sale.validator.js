@@ -2,11 +2,17 @@ const AppError = require('../errors/AppError');
 const { VALID_PAYMENT_METHODS } = require('../constants/sales.constants');
 
 const validateSaleInput = (data) => {
-    if (!data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
         throw new AppError('Sale data is required', 400);
     }
 
-    const { items, paymentMethod } = data;
+    const { items, paymentMethod, clientId } = data;
+
+    if (clientId !== undefined && clientId !== null) {
+        if (!Number.isInteger(clientId) || clientId <= 0) {
+            throw new AppError('Client ID must be a positive integer', 400);
+        }
+    }
 
     if (!Array.isArray(items)) {
         throw new AppError('Items must be an array', 400);
@@ -21,12 +27,12 @@ const validateSaleInput = (data) => {
     }
 
     for (const item of items) {
-        if (!item || typeof item !== 'object') {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
             throw new AppError('Each item must be an object', 400);
         }
 
-        if (!Number.isInteger(item.productId)) {
-            throw new AppError('Product ID must be an integer', 400);
+        if (!Number.isInteger(item.productId) || item.productId <= 0) {
+            throw new AppError('Product ID must be a positive integer', 400);
         }
 
         if (!Number.isInteger(item.quantity)) {
@@ -39,6 +45,13 @@ const validateSaleInput = (data) => {
     }
 };
 
+const validateClientIdQuery = (value) => {
+    if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) {
+        throw new AppError('Client ID must be a positive integer', 400);
+    }
+};
+
 module.exports = {
-    validateSaleInput
+    validateSaleInput,
+    validateClientIdQuery
 };
