@@ -36,6 +36,13 @@ This project is designed as a professional full-stack learning project focused o
 - Supplier return inventory movements
 - Supplier-product unit cost updates after purchases
 - Transactional purchase creation and cancellation
+- Cash register management
+- Cash register activation and deactivation
+- Cash register session opening and closing
+- Manual cash entries and withdrawals
+- Cash movement history by session
+- Expected cash and closing difference calculation
+- Transactional cash movement operations
 - Password hashing with bcrypt
 - Login with email and password
 - JWT access token authentication
@@ -104,6 +111,7 @@ This project is designed as a professional full-stack learning project focused o
 - [Suppliers API](./docs/suppliers-api.md)
 - [Supplier Products API](./docs/supplier-products-api.md)
 - [Purchases API](./docs/purchases-api.md)
+- [Cash Registers API](./docs/cash-registers-api.md)
 - [Auth API](./docs/auth-api.md)
 
 ## Available API Modules
@@ -312,6 +320,46 @@ Main features:
 - Execute creation and cancellation inside database transactions
 - Restrict purchase access to `ADMIN` and `SUPERVISOR`
 
+### Cash Registers
+
+```http
+/api/cash-registers
+/api/cash-register-sessions
+/api/cash-movements
+```
+
+Available endpoints:
+
+```http
+GET /api/cash-registers
+GET /api/cash-registers/:id
+POST /api/cash-registers
+PUT /api/cash-registers/:id
+DELETE /api/cash-registers/:id
+PATCH /api/cash-registers/:id/activate
+
+GET /api/cash-register-sessions
+GET /api/cash-register-sessions/current
+GET /api/cash-register-sessions/:id
+POST /api/cash-register-sessions/open
+PATCH /api/cash-register-sessions/:id/close
+GET /api/cash-register-sessions/:sessionId/movements
+
+POST /api/cash-movements
+```
+
+Main features:
+
+- Create, list, update, activate, and deactivate cash registers
+- Open and close cash register sessions
+- Prevent more than one open session for the same register or user
+- Register manual `CASH_IN` and `CASH_OUT` movements
+- Restrict employees to movements in their own open session
+- List movements from a cash register session
+- Calculate expected cash and the closing difference
+- Lock sessions during cash movement creation to prevent concurrent closing
+- Restrict administrative operations according to user roles
+
 ### Auth
 
 ```http
@@ -505,6 +553,9 @@ Main database-related tables:
 - `supplier_products`
 - `purchases`
 - `purchase_details`
+- `cash_registers`
+- `cash_register_sessions`
+- `cash_movements`
 - `user_sessions`
 - `user_backup_codes`
 - `user_identities`
@@ -628,3 +679,21 @@ Sales without a registered client store `client_id = NULL`.
 Deactivating a client does not remove or hide previous sales.
 
 Sales can be filtered by client using `GET /api/sales?clientId=:id`.
+
+Cash registers are soft deleted by setting `active = false`.
+
+Only active cash registers can be used to open new sessions.
+
+A cash register cannot have more than one open session at the same time.
+
+A user cannot have more than one open cash register session at the same time.
+
+Employees can only create cash movements in and close their own open sessions.
+
+Manual cash movement creation only accepts `CASH_IN` and `CASH_OUT`; `SALE` and `REFUND` are reserved for automatic system operations.
+
+Cash movements are created inside database transactions, and the session is locked to prevent it from being closed concurrently.
+
+Expected cash is calculated from the opening amount plus cash entries and sales, minus cash withdrawals and refunds.
+
+The closing difference is calculated as the declared closing amount minus the expected amount.

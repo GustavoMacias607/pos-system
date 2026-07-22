@@ -233,6 +233,19 @@ const calculateExpectedAmount = async (client, sessionId) => {
 
     return result.rows[0]?.expected_amount;
 };
+const findByIdForUpdate = async (client, id) => {
+    const result = await client.query(
+        `
+        SELECT *
+        FROM cash_register_sessions
+        WHERE id = $1
+        FOR UPDATE
+        `,
+        [id]
+    );
+
+    return result.rows[0];
+};
 
 module.exports = {
     findAll,
@@ -241,5 +254,6 @@ module.exports = {
     findOpenByUserId,
     create,
     closeOpenSession,
-    calculateExpectedAmount
+    calculateExpectedAmount,
+    findByIdForUpdate
 };

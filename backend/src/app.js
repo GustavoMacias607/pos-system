@@ -11,6 +11,7 @@ const supplierProductRoutes = require('./routes/supplierProduct.routes');
 const purchaseRoutes = require('./routes/purchase.routes');
 const cashRegisterRoutes = require('./routes/cashRegister.routes');
 const cashRegisterSessionRoutes = require('./routes/cashRegisterSession.routes');
+const cashMovementRoutes = require('./routes/cashMovement.routes');
 
 const errorHandler = require('./middlewares/errorHandler.middleware');
 
@@ -36,6 +37,7 @@ app.use('/api/suppliers/:supplierId/products', supplierProductRoutes);
 app.use('/api/purchases', purchaseRoutes);
 app.use('/api/cash-registers', cashRegisterRoutes);
 app.use('/api/cash-register-sessions', cashRegisterSessionRoutes);
+app.use('/api/cash-movements', cashMovementRoutes);
 
 app.use(errorHandler);
 
