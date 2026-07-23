@@ -73,6 +73,10 @@ This project is designed as a professional full-stack learning project focused o
 - Stock validation to prevent negative inventory
 - Transactional sale operations
 - Transactional inventory operations
+- Business reporting
+- Sales summary by date range
+- Completed and cancelled sales counts
+- Total sold and average ticket calculation
 
 ## Tech Stack
 
@@ -112,6 +116,7 @@ This project is designed as a professional full-stack learning project focused o
 - [Supplier Products API](./docs/supplier-products-api.md)
 - [Purchases API](./docs/purchases-api.md)
 - [Cash Registers API](./docs/cash-registers-api.md)
+- [Reports API](./docs/reports-api.md)
 - [Auth API](./docs/auth-api.md)
 
 ## Available API Modules
@@ -480,6 +485,29 @@ Main features:
 - Stock validation to prevent negative inventory
 - Transactional stock update and movement creation
 
+### Reports
+
+```http
+/api/reports
+```
+
+Available endpoints:
+
+```http
+GET /api/reports/sales-summary?from=2026-07-01&to=2026-07-31
+```
+
+Main features:
+
+- Generate a sales summary for an inclusive date range
+- Count completed sales
+- Count cancelled sales
+- Calculate the total amount from completed sales
+- Calculate the average ticket from completed sales
+- Return zero values when the selected period has no sales
+- Validate required dates and the `YYYY-MM-DD` format
+- Restrict report access to `ADMIN` and `SUPERVISOR`
+
 ## Environment Variables
 
 The project uses environment variables for database, server, JWT, and Google authentication configuration.
@@ -697,3 +725,15 @@ Cash movements are created inside database transactions, and the session is lock
 Expected cash is calculated from the opening amount plus cash entries and sales, minus cash withdrawals and refunds.
 
 The closing difference is calculated as the declared closing amount minus the expected amount.
+
+Sales reports require `from` and `to` query parameters in `YYYY-MM-DD` format.
+
+The report date range is inclusive.
+
+The sales summary counts completed and cancelled sales separately.
+
+Only completed sales are included in the total sold and average ticket calculations.
+
+When the selected period has no sales, report totals and counts are returned as zero.
+
+Report endpoints are restricted to users with the `ADMIN` or `SUPERVISOR` role.

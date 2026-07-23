@@ -226,7 +226,7 @@ GET /api/sales?clientId=1
     {
       "id": 1,
       "client_id": "1",
-      "client_name": "Juan PÃ©rez",
+      "client_name": "Juan Pérez",
       "subtotal": "100.00",
       "discount_total": "0.00",
       "tax": "0.00",
@@ -313,7 +313,7 @@ GET /api/sales/:id
   "data": {
     "id": 1,
     "client_id": "1",
-    "client_name": "Juan PÃ©rez",
+    "client_name": "Juan Pérez",
     "subtotal": "100.00",
     "discount_total": "0.00",
     "tax": "0.00",

@@ -12,6 +12,7 @@ const purchaseRoutes = require('./routes/purchase.routes');
 const cashRegisterRoutes = require('./routes/cashRegister.routes');
 const cashRegisterSessionRoutes = require('./routes/cashRegisterSession.routes');
 const cashMovementRoutes = require('./routes/cashMovement.routes');
+const reportRoutes = require('./routes/report.routes');
 
 const errorHandler = require('./middlewares/errorHandler.middleware');
 
@@ -38,6 +39,7 @@ app.use('/api/purchases', purchaseRoutes);
 app.use('/api/cash-registers', cashRegisterRoutes);
 app.use('/api/cash-register-sessions', cashRegisterSessionRoutes);
 app.use('/api/cash-movements', cashMovementRoutes);
+app.use('/api/reports', reportRoutes);
 
 app.use(errorHandler);
 
