@@ -8,9 +8,10 @@ const create = async (client, data) => {
             created_by_user_id,
             type,
             amount,
-            reason
+            reason,
+            sale_id
         )
-        VALUES ($1, $2, $3, $4, $5)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
         `,
         [
@@ -18,7 +19,8 @@ const create = async (client, data) => {
             data.createdByUserId,
             data.type,
             data.amount,
-            data.reason
+            data.reason,
+            data.saleId ?? null
         ]
     );
 

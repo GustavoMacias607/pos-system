@@ -123,7 +123,6 @@ const closeSession = async (id, data, authenticatedUser) => {
     validateCashSessionIdParam(String(id));
     validateCloseSessionInput(data);
 
-
     if (!authenticatedUser || typeof authenticatedUser !== 'object') {
         throw new AppError('Authenticated user is required', 401);
     }
@@ -134,55 +133,89 @@ const closeSession = async (id, data, authenticatedUser) => {
         throw new AppError('Authenticated user role is invalid', 403);
     }
 
-    const closingNotes = data.closingNotes === undefined || data.closingNotes === null
-        ? null
-        : data.closingNotes.trim();
-
-    const existingSession = await cashRegisterSessionRepository.findById(id);
-    if (!existingSession) {
-        throw new AppError('Cash session not found', 404);
-    }
-    if (existingSession.status === 'CLOSED') {
-        throw new AppError('Cash session is already closed', 409);
-    }
-
-    if (
-        authenticatedUser.role === USER_ROLES.EMPLOYEE
-        && Number(existingSession.opened_by_user_id) !== authenticatedUser.id
-    ) {
-        throw new AppError('You can only close your own cash session', 403);
-    }
+    const closingNotes =
+        data.closingNotes === undefined
+            || data.closingNotes === null
+            ? null
+            : data.closingNotes.trim();
 
     const client = await pool.connect();
 
     try {
         await client.query('BEGIN');
 
-        const expectedAmountValue =
-            await cashRegisterSessionRepository.calculateExpectedAmount(client, id);
+        const existingSession =
+            await cashRegisterSessionRepository.findByIdForUpdate(
+                client,
+                id
+            );
 
-        const expectedAmountCents = toCents(expectedAmountValue);
-        const closingAmountCents = toCents(data.closingAmount);
-        const differenceAmountCents = closingAmountCents - expectedAmountCents;
-
-        const expectedAmount = fromCents(expectedAmountCents);
-        const closingAmount = fromCents(closingAmountCents);
-        const differenceAmount = fromCents(differenceAmountCents);
-
-        const closedSession = await cashRegisterSessionRepository.closeOpenSession(
-            client,
-            id,
-            {
-                closedByUserId: authenticatedUser.id,
-                expectedAmount,
-                closingAmount,
-                differenceAmount,
-                closingNotes
-            }
-        );
-        if (!closedSession) {
-            throw new AppError('Cash session is already closed', 409);
+        if (!existingSession) {
+            throw new AppError('Cash session not found', 404);
         }
+
+        if (existingSession.status === 'CLOSED') {
+            throw new AppError(
+                'Cash session is already closed',
+                409
+            );
+        }
+
+        if (
+            authenticatedUser.role === USER_ROLES.EMPLOYEE
+            && Number(existingSession.opened_by_user_id)
+            !== Number(authenticatedUser.id)
+        ) {
+            throw new AppError(
+                'You can only close your own cash session',
+                403
+            );
+        }
+
+        const expectedAmountValue =
+            await cashRegisterSessionRepository.calculateExpectedAmount(
+                client,
+                id
+            );
+
+        const expectedAmountCents =
+            toCents(expectedAmountValue);
+
+        const closingAmountCents =
+            toCents(data.closingAmount);
+
+        const differenceAmountCents =
+            closingAmountCents - expectedAmountCents;
+
+        const expectedAmount =
+            fromCents(expectedAmountCents);
+
+        const closingAmount =
+            fromCents(closingAmountCents);
+
+        const differenceAmount =
+            fromCents(differenceAmountCents);
+
+        const closedSession =
+            await cashRegisterSessionRepository.closeOpenSession(
+                client,
+                id,
+                {
+                    closedByUserId: authenticatedUser.id,
+                    expectedAmount,
+                    closingAmount,
+                    differenceAmount,
+                    closingNotes
+                }
+            );
+
+        if (!closedSession) {
+            throw new AppError(
+                'Cash session is already closed',
+                409
+            );
+        }
+
         await client.query('COMMIT');
     } catch (error) {
         await client.query('ROLLBACK');
@@ -190,6 +223,7 @@ const closeSession = async (id, data, authenticatedUser) => {
     } finally {
         client.release();
     }
+
     return getSessionById(id);
 };
 

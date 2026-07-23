@@ -68,6 +68,22 @@ CARD
 TRANSFER
 ```
 
+### Cash register integration
+
+Sales paid with `CASH` require the authenticated user to have an open cash register session.
+
+When a cash sale is completed:
+
+- The backend automatically creates a `SALE` cash movement.
+- The movement amount is equal to the sale total.
+- The movement stores the related `sale_id`.
+- The movement is registered in the authenticated user's open session.
+- The cash register session is locked during the operation to prevent concurrent closing.
+
+Sales paid with `CARD` or `TRANSFER` do not require an open cash register session and do not create cash movements.
+
+Sale creation, inventory updates, inventory movements, and the automatic cash movement are executed inside the same database transaction. If any operation fails, all changes are rolled back.
+
 ### Behavior
 
 - `clientId` is optional.
@@ -83,6 +99,12 @@ TRANSFER
 - Stock must be sufficient.
 - Product stock is decreased atomically.
 - Inventory movements are registered with type `SALE` and negative quantity.
+- Cash sales require an open cash register session for the authenticated user.
+- Cash sales automatically create a `SALE` cash movement for the sale total.
+- Automatic cash movements store the related `sale_id`.
+- `CARD` and `TRANSFER` sales do not create cash movements.
+- The open cash register session is locked during cash sale creation.
+- Sale, inventory, and cash operations are committed or rolled back together.
 
 ### Success response
 
@@ -118,11 +140,23 @@ TRANSFER
         "quantity": -2,
         "reason": "Sale #1 - Example Product"
       }
-    ]
+    ],
+    "cashMovement": {
+      "id": "3",
+      "cash_session_id": "2",
+      "created_by_user_id": 8,
+      "type": "SALE",
+      "amount": "100.00",
+      "reason": "Sale #1",
+      "sale_id": "1",
+      "created_at": "2026-07-22T23:17:10.000Z"
+    }
   },
   "message": "Sale created successfully"
 }
 ```
+
+For sales paid with `CARD` or `TRANSFER`, `cashMovement` is `null`.
 
 For an anonymous sale:
 
@@ -133,6 +167,17 @@ For an anonymous sale:
 ```
 
 The creation response contains `client_id` but not `client_name`. Sale queries include both fields.
+
+### Open cash session required
+
+A cash sale cannot be created when the authenticated user does not have an open cash register session.
+
+```json
+{
+  "success": false,
+  "message": "An open cash session is required for cash sales"
+}
+```
 
 ### Client not found
 
@@ -181,7 +226,7 @@ GET /api/sales?clientId=1
     {
       "id": 1,
       "client_id": "1",
-      "client_name": "Juan Pérez",
+      "client_name": "Juan PÃ©rez",
       "subtotal": "100.00",
       "discount_total": "0.00",
       "tax": "0.00",
@@ -268,7 +313,7 @@ GET /api/sales/:id
   "data": {
     "id": 1,
     "client_id": "1",
-    "client_name": "Juan Pérez",
+    "client_name": "Juan PÃ©rez",
     "subtotal": "100.00",
     "discount_total": "0.00",
     "tax": "0.00",
@@ -329,7 +374,15 @@ Client association does not affect cancellation. A sale can be cancelled even if
 - Product stock is increased based on sale details.
 - Inventory movements are registered with type `CUSTOMER_RETURN` and positive quantity.
 - The cancellation is protected against double cancellation.
-- The operation runs inside a database transaction.
+- Cancelling a cash sale requires an open cash register session for the authenticated user.
+- Cancelling a cash sale automatically creates a `REFUND` cash movement.
+- The refund amount is equal to the sale total.
+- The automatic refund stores the related `sale_id`.
+- The refund is registered in the current open session of the user performing the cancellation.
+- Cancelling a `CARD` or `TRANSFER` sale does not create a cash movement.
+- The cash register session is locked during cash sale cancellation.
+- Sale cancellation, inventory restoration, inventory movements, and the refund are executed inside the same database transaction.
+- If any operation fails, all cancellation changes are rolled back.
 
 ### Success response
 
@@ -354,9 +407,32 @@ Client association does not affect cancellation. A sale can be cancelled even if
         "quantity": 2,
         "reason": "Cancelled sale #1 - Example Product"
       }
-    ]
+    ],
+    "cashMovement": {
+      "id": "4",
+      "cash_session_id": "2",
+      "created_by_user_id": 8,
+      "type": "REFUND",
+      "amount": "100.00",
+      "reason": "Refund for cancelled sale #1",
+      "sale_id": "1",
+      "created_at": "2026-07-22T23:17:30.000Z"
+    }
   },
   "message": "Sale cancelled successfully"
+}
+```
+
+When a sale paid with `CARD` or `TRANSFER` is cancelled, `cashMovement` is `null`.
+
+### Open cash session required
+
+Cancelling a cash sale requires the authenticated user to have an open cash register session.
+
+```json
+{
+  "success": false,
+  "message": "An open cash session is required for cash refunds"
 }
 ```
 
@@ -389,3 +465,11 @@ Client association does not affect cancellation. A sale can be cancelled even if
 - Deactivated clients preserve their historical sales.
 - Sales can be filtered using `GET /api/sales?clientId=:id`.
 - Sale queries use `LEFT JOIN` so anonymous sales remain visible.
+- Cash sales require an open cash register session for the authenticated user.
+- Cash sales create automatic `SALE` cash movements.
+- Cancelling cash sales creates automatic `REFUND` cash movements.
+- Automatic `SALE` and `REFUND` movements preserve the related `sale_id`.
+- Automatic cash movements are registered in the authenticated user's current open session.
+- `CARD` and `TRANSFER` sales do not affect expected cash.
+- Cash register sessions are locked while automatic cash movements are registered.
+- Sale, inventory, and cash operations are committed or rolled back together.

@@ -2,7 +2,7 @@ const salesService = require('../services/sales.service');
 const asyncHandler = require('../utils/asyncHandler');
 
 const createSale = asyncHandler(async (req, res) => {
-    const sale = await salesService.createSale(req.body);
+    const sale = await salesService.createSale(req.body, req.user.id);
 
     res.status(201).json({
         success: true,
@@ -12,15 +12,16 @@ const createSale = asyncHandler(async (req, res) => {
 });
 
 const cancelSale = asyncHandler(async (req, res) => {
-
-    const result = await salesService.cancelSale(req.params.id);
+    const result = await salesService.cancelSale(
+        req.params.id,
+        req.user.id
+    );
 
     res.status(200).json({
         success: true,
         data: result,
         message: 'Sale cancelled successfully'
     });
-
 });
 
 const getSales = asyncHandler(async (req, res) => {

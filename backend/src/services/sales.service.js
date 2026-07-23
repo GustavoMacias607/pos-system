@@ -8,10 +8,23 @@ const {
     validateSaleInput,
     validateClientIdQuery
 } = require('../validators/sale.validator');
+const cashRegisterSessionRepository =
+    require('../repositories/cashRegisterSession.repository');
 
-const createSale = async (data) => {
+const {
+    PAYMENT_METHODS
+} = require('../constants/sales.constants');
+
+const cashMovementRepository =
+    require('../repositories/cashMovement.repository');
+
+const {
+    CASH_MOVEMENT_TYPES
+} = require('../constants/cashMovementTypes');
+
+
+const createSale = async (data, userId) => {
     validateSaleInput(data);
-
 
     const clientId = data.clientId ?? null;
 
@@ -93,6 +106,23 @@ const createSale = async (data) => {
 
     try {
         await client.query('BEGIN');
+        let cashSession = null;
+
+        if (data.paymentMethod === PAYMENT_METHODS.CASH) {
+            cashSession =
+                await cashRegisterSessionRepository
+                    .findOpenByUserIdForUpdate(
+                        client,
+                        userId
+                    );
+
+            if (!cashSession) {
+                throw new AppError(
+                    'An open cash session is required for cash sales',
+                    409
+                );
+            }
+        }
 
         const sale = await salesRepository.createSale(
             client,
@@ -168,12 +198,28 @@ const createSale = async (data) => {
             createdMovements.push(movement);
         }
 
-        await client.query('COMMIT');
+        let createdCashMovement = null;
 
+        if (data.paymentMethod === PAYMENT_METHODS.CASH) {
+            createdCashMovement =
+                await cashMovementRepository.create(
+                    client,
+                    {
+                        cashSessionId: cashSession.id,
+                        createdByUserId: userId,
+                        type: CASH_MOVEMENT_TYPES.SALE,
+                        amount: total,
+                        reason: `Sale #${sale.id}`,
+                        saleId: sale.id
+                    }
+                );
+        }
+        await client.query('COMMIT');
         return {
             sale,
             details: createdDetails,
-            movements: createdMovements
+            movements: createdMovements,
+            cashMovement: createdCashMovement
         };
     } catch (error) {
         await client.query('ROLLBACK');
@@ -215,7 +261,7 @@ const normalizeItems = (items) => {
     return [...itemsMap.values()];
 };
 
-const cancelSale = async (id) => {
+const cancelSale = async (id, userId) => {
     const sale = await salesRepository.findById(id);
 
     if (!sale) {
@@ -241,10 +287,31 @@ const cancelSale = async (id) => {
             );
         }
 
+        let cashSession = null;
+
+        if (
+            cancelledSale.payment_method
+            === PAYMENT_METHODS.CASH
+        ) {
+            cashSession =
+                await cashRegisterSessionRepository
+                    .findOpenByUserIdForUpdate(
+                        client,
+                        userId
+                    );
+
+            if (!cashSession) {
+                throw new AppError(
+                    'An open cash session is required for cash refunds',
+                    409
+                );
+            }
+        }
+
         const saleDetails =
             await salesRepository.findDetailsBySaleId(
                 client,
-                sale.id
+                cancelledSale.id
             );
 
         const createdMovements = [];
@@ -256,7 +323,6 @@ const cancelSale = async (id) => {
                 detail.quantity
             );
 
-            // Customer returns restore inventory, so their movement quantity is positive.
             const movement =
                 await inventoryRepository.createMovement(
                     client,
@@ -265,18 +331,40 @@ const cancelSale = async (id) => {
                         type: 'CUSTOMER_RETURN',
                         quantity: detail.quantity,
                         reason:
-                            `Cancelled sale #${sale.id} - ${detail.product_name}`
+                            `Cancelled sale #${cancelledSale.id} - ${detail.product_name}`
                     }
                 );
 
             createdMovements.push(movement);
         }
 
+        let createdCashMovement = null;
+
+        if (
+            cancelledSale.payment_method
+            === PAYMENT_METHODS.CASH
+        ) {
+            createdCashMovement =
+                await cashMovementRepository.create(
+                    client,
+                    {
+                        cashSessionId: cashSession.id,
+                        createdByUserId: userId,
+                        type: CASH_MOVEMENT_TYPES.REFUND,
+                        amount: cancelledSale.total,
+                        reason:
+                            `Refund for cancelled sale #${cancelledSale.id}`,
+                        saleId: cancelledSale.id
+                    }
+                );
+        }
+
         await client.query('COMMIT');
 
         return {
             sale: cancelledSale,
-            movements: createdMovements
+            movements: createdMovements,
+            cashMovement: createdCashMovement
         };
     } catch (error) {
         await client.query('ROLLBACK');

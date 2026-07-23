@@ -247,6 +247,23 @@ const findByIdForUpdate = async (client, id) => {
     return result.rows[0];
 };
 
+const findOpenByUserIdForUpdate = async (client, userId) => {
+    const result = await client.query(
+        `
+        SELECT *
+        FROM cash_register_sessions
+        WHERE opened_by_user_id = $1
+          AND status = 'OPEN'
+        ORDER BY opened_at DESC
+        LIMIT 1
+        FOR UPDATE
+        `,
+        [userId]
+    );
+
+    return result.rows[0];
+};
+
 module.exports = {
     findAll,
     findById,
@@ -255,5 +272,6 @@ module.exports = {
     create,
     closeOpenSession,
     calculateExpectedAmount,
-    findByIdForUpdate
+    findByIdForUpdate,
+    findOpenByUserIdForUpdate
 };
