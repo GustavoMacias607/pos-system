@@ -18,4 +18,15 @@ router.get(
     reportController.getSalesSummary
 );
 
+router.get(
+    '/sales-by-payment-method',
+    authenticate,
+    authorizeRoles(
+        USER_ROLES.ADMIN,
+        USER_ROLES.SUPERVISOR
+    ),
+    validateSalesSummaryQueryData,
+    reportController.getSalesByPaymentMethod
+);
+
 module.exports = router;

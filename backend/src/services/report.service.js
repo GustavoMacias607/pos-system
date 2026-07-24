@@ -15,6 +15,19 @@ const getSalesSummary = async (from, to) => {
     };
 };
 
+const getSalesByPaymentMethod = async (from, to) => {
+    const salesByPaymentMethod = await reportRepository.getSalesByPaymentMethod(from, to);
+
+    return {
+        period: {
+            from,
+            to
+        },
+        paymentMethods: salesByPaymentMethod
+    };
+};
+
 module.exports = {
-    getSalesSummary
+    getSalesSummary,
+    getSalesByPaymentMethod
 };
