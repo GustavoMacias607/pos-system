@@ -1,82 +1,68 @@
 # POS System
 
-Backend for a Point of Sale system built with Node.js, Express, PostgreSQL, and Docker.
+REST API for a Point of Sale system built with Node.js, Express, PostgreSQL, and Docker.
 
-This project is designed as a professional full-stack learning project focused on backend architecture, business rules, authentication, inventory management, sales workflows, and real-world API design.
+The system manages products, inventory, suppliers, purchases, sales, clients, cash registers, authentication, role-based authorization, two-factor authentication, and business reports.
+
+It is designed as a professional learning and portfolio project, applying layered architecture, database transactions, business rules, security practices, and real-world API design.
 
 ## Current Features
 
-- Product management
-- Product activation and deactivation
-- Product category assignment
-- Category management
-- Category activation and deactivation
-- User management
-- User activation and deactivation
-- User roles: `ADMIN`, `EMPLOYEE`, `SUPERVISOR`
-- User email uniqueness validation
-- Client management
-- Client activation and deactivation
-- Optional client email
-- Case-insensitive unique client email validation
-- Supplier management
-- Supplier activation and deactivation
-- Optional supplier email
-- Case-insensitive unique supplier email validation
-- Supplier-product relationship management
+### Catalog Management
+
+- Product and category management
+- Client and supplier management
+- Supplier-product relationships
+- Optional client and supplier emails
+- Case-insensitive email uniqueness validation
+- Activation and deactivation through soft deletion
 - Supplier-specific product codes and unit costs
-- Supplier-product relationship activation and deactivation
-- Purchase management
-- Purchase detail registration
-- Optional supplier invoice tracking
-- Case-insensitive invoice uniqueness per supplier
-- Automatic stock increase after purchases
-- Purchase cancellation
-- Automatic stock decrease after purchase cancellation
-- Supplier return inventory movements
-- Supplier-product unit cost updates after purchases
+
+### Inventory and Purchases
+
 - Transactional purchase creation and cancellation
-- Cash register management
-- Cash register activation and deactivation
-- Cash register session opening and closing
+- Purchase detail and optional supplier invoice registration
+- Automatic stock updates after purchases and cancellations
+- Inventory movement history and filters
+- Manual adjustments, stock entries, waste, and supplier returns
+- Low-stock detection
+- Negative-stock prevention
+- Supplier-product unit cost updates after purchases
+
+### Sales and Cash Management
+
+- Transactional sale creation and cancellation
+- Sale detail registration
+- Optional client association and anonymous sales
+- Sales history filtering by client
+- Automatic stock decrease and restoration
+- Cash register and session management
 - Manual cash entries and withdrawals
-- Cash movement history by session
+- Cash movement history
 - Expected cash and closing difference calculation
-- Transactional cash movement operations
+
+### Authentication and Security
+
 - Password hashing with bcrypt
 - Login with email and password
-- JWT access token authentication
-- Refresh token sessions
-- Logout by refresh token revocation
-- Protected routes
-- Role-based authorization
-- Two-factor authentication with TOTP
+- JWT access and refresh tokens
+- Refresh token session revocation
+- Protected routes and role-based authorization
+- TOTP two-factor authentication
 - QR code generation for authenticator apps
-- Backup codes for 2FA recovery
-- Google Login using Google ID tokens
-- Google account linking through user identities
-- Sale creation
-- Sale detail registration
-- Optional client association with sales
-- Anonymous sales without registered clients
-- Sales history filtering by client
-- Stock decrease after sales
-- Sale cancellation
-- Stock restoration after sale cancellation
-- Inventory movement history
-- Inventory movement filters by type and product
-- Manual inventory adjustments
-- Positive and negative stock corrections
-- Stock entries using `PURCHASE` movements
-- Waste movements for damaged, expired, or lost products
-- Low stock product detection
-- Stock validation to prevent negative inventory
-- Transactional sale operations
-- Transactional inventory operations
-- Business reporting
+- Single-use backup codes
+- Google Login and account linking
+
+### Reports
+
 - Sales summary by date range
-- Completed and cancelled sales counts
-- Total sold and average ticket calculation
+- Sales grouped by payment method
+- Daily sales reporting
+- Top-selling product reporting
+- Low-stock product reporting
+- Purchases grouped by supplier
+- Completed and cancelled operation counts
+- Totals and average calculations
 
 ## Tech Stack
 
@@ -91,18 +77,20 @@ This project is designed as a professional full-stack learning project focused o
 - qrcode
 - Google Auth Library
 
-## Project Structure
+## Architecture
 
-- `backend/src/controllers`: HTTP controllers
-- `backend/src/services`: business logic
-- `backend/src/repositories`: database access
-- `backend/src/middlewares`: Express middlewares
-- `backend/src/validators`: reusable input validators
+The backend follows a layered architecture:
+
+- `backend/src/controllers`: HTTP request and response handling
+- `backend/src/services`: business rules and transaction orchestration
+- `backend/src/repositories`: database access and SQL queries
+- `backend/src/middlewares`: authentication, authorization, validation, and error handling
+- `backend/src/validators`: reusable input validation
 - `backend/src/constants`: shared constants
 - `backend/src/errors`: custom application errors
 - `backend/src/utils`: shared utilities
-- `backend/migrations`: database migrations
-- `docs`: module documentation
+- `backend/migrations`: versioned database migrations
+- `docs`: detailed API documentation
 
 ## API Documentation
 
@@ -121,7 +109,15 @@ This project is designed as a professional full-stack learning project focused o
 
 ## Available API Modules
 
+All protected endpoints require a valid JWT access token:
+
+```http
+Authorization: Bearer <accessToken>
+```
+
 ### Products
+
+Base route:
 
 ```http
 /api/products
@@ -129,17 +125,14 @@ This project is designed as a professional full-stack learning project focused o
 
 Main features:
 
-- Create products
-- List products
-- Get product by ID
-- Update products
-- Activate products
-- Deactivate products
+- Create, list, retrieve, and update products
+- Activate and deactivate products
 - Assign products to categories
-- Validate stock
-- Detect low stock products using minimum stock
+- Validate stock and detect low-stock products
 
 ### Categories
+
+Base route:
 
 ```http
 /api/categories
@@ -147,44 +140,27 @@ Main features:
 
 Main features:
 
-- Create categories
-- List categories
-- Get category by ID
-- Update categories
-- Activate categories
-- Deactivate categories
+- Create, list, retrieve, and update categories
+- Activate and deactivate categories
 
 ### Users
 
 ```http
-/api/users
-```
-
-Available endpoints:
-
-```http
-GET /api/users
-GET /api/users/:id
-POST /api/users
-PUT /api/users/:id
+GET    /api/users
+GET    /api/users/:id
+POST   /api/users
+PUT    /api/users/:id
 DELETE /api/users/:id
-PATCH /api/users/:id/activate
+PATCH  /api/users/:id/activate
 ```
 
 Main features:
 
-- Create users
-- List users
-- Get user by ID
-- Update users
-- Activate users
-- Deactivate users
-- Validate required user fields
-- Validate user email format
-- Validate unique user email
-- Validate user roles
-- Hash passwords with bcrypt
-- Prevent returning `password` or `password_hash` in API responses
+- User CRUD with activation and deactivation
+- Email format and uniqueness validation
+- Password hashing
+- Role validation
+- Password and password-hash exclusion from API responses
 
 Valid roles:
 
@@ -195,183 +171,110 @@ Valid roles:
 ### Clients
 
 ```http
-/api/clients
-```
-
-Available endpoints:
-
-```http
-GET /api/clients
-GET /api/clients/:id
-POST /api/clients
-PUT /api/clients/:id
+GET    /api/clients
+GET    /api/clients/:id
+POST   /api/clients
+PUT    /api/clients/:id
 DELETE /api/clients/:id
-PATCH /api/clients/:id/activate
+PATCH  /api/clients/:id/activate
 ```
 
 Main features:
 
-- Create clients
-- List clients
-- Get client by ID
-- Update clients
-- Activate clients
-- Deactivate clients
-- Validate required client fields
-- Validate client email format
-- Validate unique client email
-- Support clients without email
-- Soft delete clients using `active = false`
-- Associate active clients with new sales
-- Preserve sale history after client deactivation
-- Retrieve client sales using `GET /api/sales?clientId=:id`
+- Client CRUD with activation and deactivation
+- Optional email with case-insensitive uniqueness
+- Association of active clients with new sales
+- Preservation of sales history after client deactivation
 
 ### Suppliers
 
 ```http
-/api/suppliers
-```
-
-Available endpoints:
-
-```http
-GET /api/suppliers
-GET /api/suppliers/:id
-POST /api/suppliers
-PUT /api/suppliers/:id
+GET    /api/suppliers
+GET    /api/suppliers/:id
+POST   /api/suppliers
+PUT    /api/suppliers/:id
 DELETE /api/suppliers/:id
-PATCH /api/suppliers/:id/activate
+PATCH  /api/suppliers/:id/activate
 ```
 
 Main features:
 
-- Create suppliers
-- List suppliers
-- Get supplier by ID
-- Update suppliers
-- Activate suppliers
-- Deactivate suppliers
-- Store an optional supplier contact name
-- Validate required supplier fields
-- Validate supplier email format
-- Validate unique supplier email without case sensitivity
-- Support multiple suppliers without email
-- Soft delete suppliers using `active = false`
+- Supplier CRUD with activation and deactivation
+- Optional contact information
+- Optional email with case-insensitive uniqueness
 
 ### Supplier Products
 
 ```http
-/api/suppliers/:supplierId/products
-```
-
-Available endpoints:
-
-```http
-GET /api/suppliers/:supplierId/products
-GET /api/suppliers/:supplierId/products/:productId
-POST /api/suppliers/:supplierId/products
-PUT /api/suppliers/:supplierId/products/:productId
+GET    /api/suppliers/:supplierId/products
+GET    /api/suppliers/:supplierId/products/:productId
+POST   /api/suppliers/:supplierId/products
+PUT    /api/suppliers/:supplierId/products/:productId
 DELETE /api/suppliers/:supplierId/products/:productId
-PATCH /api/suppliers/:supplierId/products/:productId/activate
+PATCH  /api/suppliers/:supplierId/products/:productId/activate
 ```
 
 Main features:
 
-- Associate multiple products with a supplier
-- Associate the same product with multiple suppliers
-- Store supplier-specific product codes
-- Store the current unit cost for each supplier-product relationship
-- Validate unique supplier-product pairs
-- Validate supplier product codes without case sensitivity
-- Preserve fields that are not included in partial updates
-- Remove optional supplier product codes using `null`
-- Activate and deactivate supplier-product relationships
-- Prevent relationship creation or activation when the supplier or product is inactive
-- Allow all authenticated roles to read supplier-product relationships
-- Restrict relationship management to `ADMIN` and `SUPERVISOR`
+- Many-to-many supplier-product relationships
+- Supplier-specific product codes and unit costs
+- Activation and deactivation
+- Validation of active suppliers and products
+- Read access for all authenticated roles
+- Management restricted to `ADMIN` and `SUPERVISOR`
 
 ### Purchases
 
 ```http
-/api/purchases
-```
-
-Available endpoints:
-
-```http
-GET /api/purchases
-GET /api/purchases/:id
-POST /api/purchases
+GET   /api/purchases
+GET   /api/purchases/:id
+POST  /api/purchases
 PATCH /api/purchases/:id/cancel
 ```
 
 Main features:
 
-- Create completed supplier purchases
-- List purchases
-- Get purchases with their details
-- Store optional supplier invoice numbers
-- Validate invoice uniqueness per supplier without case sensitivity
-- Calculate line totals, subtotal, tax, and total on the backend
-- Register the authenticated user who created the purchase
-- Increase product stock after purchase creation
-- Create positive `PURCHASE` inventory movements
-- Update the current supplier-product unit cost
-- Cancel completed purchases
-- Decrease stock safely during purchase cancellation
-- Create negative `SUPPLIER_RETURN` inventory movements
-- Prevent cancellation when current stock is insufficient
-- Preserve cancelled purchases and their details for audit purposes
-- Execute creation and cancellation inside database transactions
-- Restrict purchase access to `ADMIN` and `SUPERVISOR`
+- Completed purchase creation with purchase details
+- Optional supplier invoice numbers
+- Backend calculation of subtotal, tax, and total
+- Automatic stock increase and `PURCHASE` inventory movements
+- Supplier-product unit cost updates
+- Purchase cancellation with stock reversal
+- Negative `SUPPLIER_RETURN` inventory movements
+- Transactional creation and cancellation
+- Access restricted to `ADMIN` and `SUPERVISOR`
 
 ### Cash Registers
 
 ```http
-/api/cash-registers
-/api/cash-register-sessions
-/api/cash-movements
-```
-
-Available endpoints:
-
-```http
-GET /api/cash-registers
-GET /api/cash-registers/:id
-POST /api/cash-registers
-PUT /api/cash-registers/:id
+GET    /api/cash-registers
+GET    /api/cash-registers/:id
+POST   /api/cash-registers
+PUT    /api/cash-registers/:id
 DELETE /api/cash-registers/:id
-PATCH /api/cash-registers/:id/activate
+PATCH  /api/cash-registers/:id/activate
 
-GET /api/cash-register-sessions
-GET /api/cash-register-sessions/current
-GET /api/cash-register-sessions/:id
-POST /api/cash-register-sessions/open
+GET   /api/cash-register-sessions
+GET   /api/cash-register-sessions/current
+GET   /api/cash-register-sessions/:id
+POST  /api/cash-register-sessions/open
 PATCH /api/cash-register-sessions/:id/close
-GET /api/cash-register-sessions/:sessionId/movements
+GET   /api/cash-register-sessions/:sessionId/movements
 
 POST /api/cash-movements
 ```
 
 Main features:
 
-- Create, list, update, activate, and deactivate cash registers
-- Open and close cash register sessions
-- Prevent more than one open session for the same register or user
-- Register manual `CASH_IN` and `CASH_OUT` movements
-- Restrict employees to movements in their own open session
-- List movements from a cash register session
-- Calculate expected cash and the closing difference
-- Lock sessions during cash movement creation to prevent concurrent closing
-- Restrict administrative operations according to user roles
+- Cash register activation and deactivation
+- Cash register session opening and closing
+- One open session per register and user
+- Manual `CASH_IN` and `CASH_OUT` movements
+- Employee ownership restrictions
+- Expected cash and closing difference calculation
+- Transactional cash movements with concurrent-closing protection
 
-### Auth
-
-```http
-/api/auth
-```
-
-Available endpoints:
+### Authentication
 
 ```http
 POST /api/auth/login
@@ -386,50 +289,38 @@ POST /api/auth/google
 
 Main features:
 
-- Login with email and password
-- Password validation using bcrypt
-- JWT access token generation
-- Refresh token generation
-- Session persistence in database
-- Logout by revoking refresh token sessions
-- Protected routes using `Authorization: Bearer <accessToken>`
+- Email and password authentication
+- JWT access and refresh tokens
+- Refresh token sessions and revocation
 - Role-based access control
-- Active user validation before authentication
-- Two-factor authentication using TOTP
-- QR code generation for Google Authenticator or similar apps
-- Backup codes for 2FA recovery
-- Google Login using Google ID tokens
-- Google account linking through `user_identities`
+- TOTP two-factor authentication
+- Backup code recovery
+- Google ID token verification and account linking
 
 Authentication flows:
 
-```txt
+```text
 Email/password
-↓
-accessToken + refreshToken
+→ accessToken + refreshToken
 ```
 
-```txt
+```text
 Email/password with 2FA enabled
-↓
-requiresTwoFactor = true
-↓
-verify TOTP token or backup code
-↓
-accessToken + refreshToken
+→ requiresTwoFactor = true
+→ verify TOTP token or backup code
+→ accessToken + refreshToken
 ```
 
-```txt
-Google Login
-↓
+```text
 Google ID token
-↓
-backend verifies token
-↓
-accessToken + refreshToken
+→ backend token verification
+→ existing POS user account linking
+→ accessToken + refreshToken
 ```
 
 ### Sales
+
+Base route:
 
 ```http
 /api/sales
@@ -437,36 +328,23 @@ accessToken + refreshToken
 
 Main features:
 
-- Create sales
-- List sales
-- Get sale by ID
+- Create and list sales
+- Retrieve a sale by ID
 - Register sale details
-- Decrease stock after sale
-- Register inventory movements
-- Cancel sales
-- Restore stock after cancellation
-- Execute sale creation inside a database transaction
-- Execute sale cancellation inside a database transaction
 - Create sales with or without a registered client
-- Validate active clients during sale creation
-- Return client information in sale queries
 - Filter sale history by client
-- Preserve anonymous sales using `client_id = NULL`
+- Decrease stock and register inventory movements
+- Cancel sales and restore stock
+- Transactional creation and cancellation
 
 ### Inventory
 
 ```http
-/api/inventory
-```
-
-Available endpoints:
-
-```http
-GET /api/inventory/movements
-GET /api/inventory/movements?type=WASTE
-GET /api/inventory/movements?productId=1
-GET /api/inventory/movements?type=PURCHASE&productId=1
-GET /api/inventory/low-stock
+GET  /api/inventory/movements
+GET  /api/inventory/movements?type=WASTE
+GET  /api/inventory/movements?productId=1
+GET  /api/inventory/movements?type=PURCHASE&productId=1
+GET  /api/inventory/low-stock
 POST /api/inventory/adjustment
 POST /api/inventory/stock-entry
 POST /api/inventory/waste
@@ -475,38 +353,35 @@ POST /api/inventory/waste
 Main features:
 
 - Inventory movement history
-- Inventory movement filters by type and product
-- Low stock product detection
-- Manual stock adjustments
-- Positive stock corrections
-- Negative stock corrections
-- Stock entries using `PURCHASE` movements
-- Waste movements using `WASTE` movements
-- Stock validation to prevent negative inventory
-- Transactional stock update and movement creation
+- Movement filters by type and product
+- Low-stock detection
+- Positive and negative stock adjustments
+- Stock entries and waste movements
+- Negative-stock prevention
+- Transactional stock updates and movement creation
 
 ### Reports
 
 ```http
-/api/reports
-```
-
-Available endpoints:
-
-```http
 GET /api/reports/sales-summary?from=2026-07-01&to=2026-07-31
+GET /api/reports/sales-by-payment-method?from=2026-07-01&to=2026-07-31
+GET /api/reports/sales-by-day?from=2026-07-01&to=2026-07-31
+GET /api/reports/top-selling-products?from=2026-07-01&to=2026-07-31&limit=10
+GET /api/reports/low-stock-products
+GET /api/reports/purchases-by-supplier?from=2026-07-01&to=2026-07-31
 ```
 
 Main features:
 
-- Generate a sales summary for an inclusive date range
-- Count completed sales
-- Count cancelled sales
-- Calculate the total amount from completed sales
-- Calculate the average ticket from completed sales
-- Return zero values when the selected period has no sales
-- Validate required dates and the `YYYY-MM-DD` format
-- Restrict report access to `ADMIN` and `SUPERVISOR`
+- Inclusive date-range reporting
+- Sales summary totals and average ticket
+- Sales grouped by payment method
+- Daily sales results, including dates without sales
+- Top-selling products with a configurable limit
+- Current low-stock products
+- Purchases grouped by supplier
+- Completed and cancelled operation counts
+- Access restricted to `ADMIN` and `SUPERVISOR`
 
 ## Environment Variables
 
@@ -531,37 +406,40 @@ GOOGLE_CLIENT_ID=your_google_client_id_here
 
 Important:
 
-- `.env` contains local real values and should not be committed.
+- `.env` contains local values and must not be committed.
 - `.env.example` contains placeholder values and should be committed.
-- `JWT_SECRET` must be kept private.
+- `JWT_SECRET` must remain private.
+- `DB_HOST` must match the PostgreSQL service name in `docker-compose.yml`.
 - `GOOGLE_CLIENT_ID` is used to validate Google ID tokens.
-- Google Client Secret is not used by the current Google Login flow.
+- A Google Client Secret is not required by the current Google Login flow.
 
-## Run Project
+## Run the Project
+
+Start the services:
 
 ```bash
 docker compose up -d
 ```
 
-To rebuild and recreate the backend container:
+Rebuild and recreate the backend container:
 
 ```bash
 docker compose up -d --build --force-recreate backend
 ```
 
-## Run Migrations
+Run database migrations:
 
 ```bash
 docker exec -it pos-backend npm run migrate
 ```
 
-## Check Backend Logs
+Check backend logs:
 
 ```bash
 docker logs -f pos-backend
 ```
 
-## Access PostgreSQL
+Access PostgreSQL:
 
 ```bash
 docker exec -it pos-postgres psql -U pos_user -d pos_db
@@ -569,9 +447,9 @@ docker exec -it pos-postgres psql -U pos_user -d pos_db
 
 ## Database
 
-The project uses PostgreSQL running in Docker.
+PostgreSQL runs in Docker and stores the application data.
 
-Main database-related tables:
+Main tables:
 
 - `products`
 - `categories`
@@ -592,148 +470,75 @@ Main database-related tables:
 - `inventory_movements`
 - `schema_migrations`
 
-## Authentication Notes
-
-User passwords are hashed with bcrypt before being stored in the database.
-
-User passwords and password hashes are never returned by the API.
-
-JWT access tokens are used to authenticate protected routes.
-
-Protected routes require a valid JWT access token using the `Authorization: Bearer <accessToken>` header.
-
-Refresh tokens are stored as hashes in the `user_sessions` table.
-
-Logout revokes the refresh token session by setting `revoked_at`.
-
-Two-factor authentication uses TOTP codes generated by authenticator apps.
-
-Backup codes are generated when 2FA is enabled and can only be used once.
-
-Backup codes are stored as hashes in the database.
-
-Google Login validates Google ID tokens using `GOOGLE_CLIENT_ID`.
-
-Google Login does not create POS users automatically. The POS user must already exist with the same email before the Google account can be linked.
-
-## Business Rules
-
-Sale creation and sale cancellation are executed using database transactions to keep sales, stock, and inventory movements consistent.
-
-Manual inventory adjustments, stock entries, and waste movements are also executed using database transactions to keep product stock and inventory movement history consistent.
-
-The system does not allow inventory operations that would leave product stock below zero.
-
-A product is considered low stock when its current stock is less than or equal to its minimum stock.
-
-Users are soft deleted by setting `active = false`.
-
-Clients are soft deleted by setting `active = false`.
-
-Client email is optional.
-
-Client email uniqueness is case-insensitive when provided.
-
-Multiple clients can exist without email.
-
-Suppliers are soft deleted by setting `active = false`.
-
-Supplier email is optional.
-
-Supplier email uniqueness is case-insensitive when provided.
-
-Multiple suppliers can exist without email.
-
-Suppliers and products have a many-to-many relationship through `supplier_products`.
-
-A supplier-product pair can exist only once.
-
-Supplier product codes are optional and unique within each supplier without case sensitivity.
-
-Each supplier-product relationship stores the supplier's current unit cost.
-
-Supplier-product relationships are soft deleted by setting `active = false`.
-
-Inactive supplier-product relationships must be reactivated instead of recreated.
-
-Supplier-product relationships cannot be created or activated when the supplier or product is inactive.
-
-Sales can be created with or without a registered client.
-
-Inactive users cannot log in.
-
-Invalid email and invalid password return the same error message for security reasons.
-
-Users can only access routes allowed for their role.
-
-`ADMIN` has full administrative access.
-
-`SUPERVISOR` can manage products, categories, supplier-product relationships, sales cancellation, and inventory operations.
-
-`EMPLOYEE` can perform operational tasks such as creating sales, registering clients, and reading allowed resources, including supplier-product relationships.
-
-Purchase creation and purchase cancellation are executed using database transactions to keep purchases, details, stock, inventory movements, and supplier costs consistent.
-
-Purchases are created directly with `COMPLETED` status.
-
-Completed purchases are immutable. Incorrect purchases must be cancelled and recreated instead of being edited or deleted.
-
-Purchase invoice numbers are optional and unique per supplier without case sensitivity.
-
-Multiple purchases without an invoice number are allowed.
-
-A purchase can only include active products associated with an active supplier through active supplier-product relationships.
-
-Purchase totals are calculated by the backend using item quantities, unit costs, and tax amounts.
-
-Creating a purchase increases product stock and creates positive `PURCHASE` inventory movements.
-
-Creating a purchase updates the current unit cost stored in the supplier-product relationship.
-
-Cancelling a purchase decreases product stock and creates negative `SUPPLIER_RETURN` inventory movements.
-
-A purchase cannot be cancelled when the current stock is insufficient to reverse all purchased quantities.
-
-Cancelled purchases and their details remain stored for audit purposes.
-
-Purchase endpoints are restricted to users with the `ADMIN` or `SUPERVISOR` role.
-
-Clients are optional when creating sales.
-
-Only active clients can be associated with new sales.
-
-Sales without a registered client store `client_id = NULL`.
-
-Deactivating a client does not remove or hide previous sales.
-
-Sales can be filtered by client using `GET /api/sales?clientId=:id`.
-
-Cash registers are soft deleted by setting `active = false`.
-
-Only active cash registers can be used to open new sessions.
-
-A cash register cannot have more than one open session at the same time.
-
-A user cannot have more than one open cash register session at the same time.
-
-Employees can only create cash movements in and close their own open sessions.
-
-Manual cash movement creation only accepts `CASH_IN` and `CASH_OUT`; `SALE` and `REFUND` are reserved for automatic system operations.
-
-Cash movements are created inside database transactions, and the session is locked to prevent it from being closed concurrently.
-
-Expected cash is calculated from the opening amount plus cash entries and sales, minus cash withdrawals and refunds.
-
-The closing difference is calculated as the declared closing amount minus the expected amount.
-
-Sales reports require `from` and `to` query parameters in `YYYY-MM-DD` format.
-
-The report date range is inclusive.
-
-The sales summary counts completed and cancelled sales separately.
-
-Only completed sales are included in the total sold and average ticket calculations.
-
-When the selected period has no sales, report totals and counts are returned as zero.
-
-Report endpoints are restricted to users with the `ADMIN` or `SUPERVISOR` role.
+## Key Business Rules
+
+### Security and Access
+
+- Passwords and backup codes are stored as hashes and are never returned by the API.
+- Inactive users cannot log in.
+- Invalid email and password attempts return the same message.
+- Refresh tokens are stored as hashes and can be revoked during logout.
+- Routes are protected according to the authenticated user's role.
+- `ADMIN` has full administrative access.
+- `SUPERVISOR` can manage operational and supervisory modules.
+- `EMPLOYEE` can perform permitted operational tasks and read allowed resources.
+
+### Catalogs and Relationships
+
+- Users, clients, suppliers, products, categories, and supplier-product relationships support soft deletion where applicable.
+- Optional client and supplier emails are unique without case sensitivity when provided.
+- A supplier-product pair can exist only once.
+- Supplier product codes are optional and unique within each supplier without case sensitivity.
+- Inactive supplier-product relationships must be reactivated instead of recreated.
+- Supplier-product relationships cannot be created or activated when the supplier or product is inactive.
+
+### Sales and Inventory
+
+- Sales can be created with or without a registered client.
+- Only active clients can be associated with new sales.
+- Anonymous sales store `client_id = NULL`.
+- Deactivating a client does not remove previous sales.
+- Sale creation and cancellation run inside database transactions.
+- Inventory operations cannot leave product stock below zero.
+- A product is considered low stock when `stock <= minimum_stock`.
+- Inventory adjustments, entries, waste, and purchase movements preserve movement history.
+
+### Purchases
+
+- Purchases are created directly with `COMPLETED` status.
+- Completed purchases are immutable and must be cancelled rather than edited or deleted.
+- Invoice numbers are optional and unique per supplier without case sensitivity.
+- Purchase totals are calculated by the backend.
+- Creating a purchase increases stock and updates supplier-product unit costs.
+- Cancelling a purchase decreases stock and creates supplier-return movements.
+- A purchase cannot be cancelled when stock is insufficient to reverse its quantities.
+- Cancelled purchases and their details remain stored for audit purposes.
+- A purchase can include only active products associated with the active supplier through active supplier-product relationships.
+- Purchase endpoints are restricted to `ADMIN` and `SUPERVISOR`.
+
+### Cash Registers
+
+- Only active cash registers can open new sessions.
+- A cash register and a user can each have only one open session at a time.
+- Employees can create movements in and close only their own open sessions.
+- Manual movement creation accepts only `CASH_IN` and `CASH_OUT`.
+- Cash movements run inside database transactions and lock the session against concurrent closing.
+- Expected cash is calculated from the opening amount plus entries and applicable inflows, minus withdrawals and applicable outflows.
+- Closing difference equals the declared closing amount minus the expected amount.
+- Cash registers are soft deleted by setting `active = false`.
+- `SALE` and `REFUND` movements are reserved for automatic system operations.
+
+### Reports
+
+- Report endpoints are available only to `ADMIN` and `SUPERVISOR`.
+- Date-based reports require valid `from` and `to` values in `YYYY-MM-DD` format.
+- Date ranges include both boundary dates.
+- Completed and cancelled operations are counted separately.
+- Cancelled operations are excluded from totals and averages.
+- Payment method reports always include `CASH`, `CARD`, and `TRANSFER`.
+- Daily reports include dates without sales.
+- Top-selling products use completed sales only.
+- The top-selling-products limit defaults to `10` and cannot exceed `100`.
+- Low-stock reports include active products whose stock is equal to or below the configured minimum.
+- Report monetary values are returned as strings to preserve decimal precision.
+- Report queries do not modify sales, inventory, purchases, or cash register data.
