@@ -1,7 +1,8 @@
 const express = require('express');
 const reportController = require('../controllers/report.controller');
 const {
-    validateSalesSummaryQueryData
+    validateReportDateRangeQueryData,
+    validateTopSellingProductsQueryData
 } = require('../middlewares/reportValidation.middleware');
 const { authenticate, authorizeRoles } = require('../middlewares/auth.middleware');
 const { USER_ROLES } = require('../constants/userRoles');
@@ -14,7 +15,7 @@ router.get(
     authorizeRoles(
         USER_ROLES.ADMIN, USER_ROLES.SUPERVISOR
     ),
-    validateSalesSummaryQueryData,
+    validateReportDateRangeQueryData,
     reportController.getSalesSummary
 );
 
@@ -25,8 +26,51 @@ router.get(
         USER_ROLES.ADMIN,
         USER_ROLES.SUPERVISOR
     ),
-    validateSalesSummaryQueryData,
+    validateReportDateRangeQueryData,
     reportController.getSalesByPaymentMethod
+);
+
+router.get(
+    '/sales-by-day',
+    authenticate,
+    authorizeRoles(
+        USER_ROLES.ADMIN,
+        USER_ROLES.SUPERVISOR
+    ),
+    validateReportDateRangeQueryData,
+    reportController.getSalesByDay
+);
+
+router.get(
+    '/top-selling-products',
+    authenticate,
+    authorizeRoles(
+        USER_ROLES.ADMIN,
+        USER_ROLES.SUPERVISOR
+    ),
+    validateTopSellingProductsQueryData,
+    reportController.getTopSellingProducts
+);
+
+router.get(
+    '/low-stock-products',
+    authenticate,
+    authorizeRoles(
+        USER_ROLES.ADMIN,
+        USER_ROLES.SUPERVISOR
+    ),
+    reportController.getLowStockProducts
+);
+
+router.get(
+    '/purchases-by-supplier',
+    authenticate,
+    authorizeRoles(
+        USER_ROLES.ADMIN,
+        USER_ROLES.SUPERVISOR
+    ),
+    validateReportDateRangeQueryData,
+    reportController.getPurchasesBySupplier
 );
 
 module.exports = router;

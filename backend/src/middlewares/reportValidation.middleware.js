@@ -1,10 +1,20 @@
 const {
-    validateSalesSummaryQuery
+    validateReportDateRangeQuery,
+    validateTopSellingProductsQuery
 } = require('../validators/report.validator');
 
-const validateSalesSummaryQueryData = (req, res, next) => {
+const validateReportDateRangeQueryData = (req, res, next) => {
     try {
-        validateSalesSummaryQuery(req.query);
+        validateReportDateRangeQuery(req.query);
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+
+const validateTopSellingProductsQueryData = (req, res, next) => {
+    try {
+        validateTopSellingProductsQuery(req.query);
         next();
     } catch (error) {
         next(error);
@@ -12,5 +22,6 @@ const validateSalesSummaryQueryData = (req, res, next) => {
 };
 
 module.exports = {
-    validateSalesSummaryQueryData
+    validateReportDateRangeQueryData,
+    validateTopSellingProductsQueryData
 };

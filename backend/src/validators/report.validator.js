@@ -13,9 +13,9 @@ const isRealDate = (value) => {
     );
 };
 
-const validateSalesSummaryQuery = (data) => {
+const validateReportDateRangeQuery = (data) => {
     if (!data || typeof data !== 'object') {
-        throw new AppError('Sales summary query is required', 400);
+        throw new AppError('Report query is required', 400);
     }
     if (data.from === undefined) {
         throw new AppError('From date is required', 400);
@@ -54,6 +54,32 @@ const validateSalesSummaryQuery = (data) => {
     }
 };
 
+const validateTopSellingProductsQuery = (data) => {
+    validateReportDateRangeQuery(data);
+
+    if (data.limit === undefined) {
+        return;
+    }
+
+    if (
+        typeof data.limit !== 'string' ||
+        !/^\d+$/.test(data.limit)
+    ) {
+        throw new AppError('Limit must be an integer', 400);
+    }
+
+    const limit = Number(data.limit);
+
+    if (limit < 1) {
+        throw new AppError('Limit must be greater than 0', 400);
+    }
+
+    if (limit > 100) {
+        throw new AppError('Limit cannot be greater than 100', 400);
+    }
+};
+
 module.exports = {
-    validateSalesSummaryQuery
+    validateReportDateRangeQuery,
+    validateTopSellingProductsQuery
 };
