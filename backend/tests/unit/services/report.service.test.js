@@ -2,7 +2,8 @@ jest.mock('../../../src/repositories/report.repository', () => ({
     getSalesSummary: jest.fn(),
     getSalesByPaymentMethod: jest.fn(),
     getSalesByDay: jest.fn(),
-    getTopSellingProducts: jest.fn()
+    getTopSellingProducts: jest.fn(),
+    getLowStockProducts: jest.fn()
 }));
 
 const reportService = require('../../../src/services/report.service');
@@ -151,6 +152,47 @@ describe('reportService.getSalesByDay', () => {
             '2026-07-01',
             '2026-07-31'
         );
+    });
+});
+
+describe('reportService.getLowStockProducts', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    test('returns the low-stock products', async () => {
+        const repositoryResult = [
+            {
+                product_id: '1',
+                product_name: 'Coffee',
+                stock: 3,
+                min_stock: 5
+            },
+            {
+                product_id: '2',
+                product_name: 'Milk',
+                stock: 1,
+                min_stock: 4
+            }
+        ];
+
+        reportRepository.getLowStockProducts.mockResolvedValue(
+            repositoryResult
+        );
+
+        const result = await reportService.getLowStockProducts();
+
+        expect(result).toEqual({
+            products: repositoryResult
+        });
+
+        expect(
+            reportRepository.getLowStockProducts
+        ).toHaveBeenCalledTimes(1);
+
+        expect(
+            reportRepository.getLowStockProducts
+        ).toHaveBeenCalledWith();
     });
 });
 
