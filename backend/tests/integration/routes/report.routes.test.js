@@ -40,13 +40,10 @@ describe('GET /api/reports/sales-summary', () => {
                 from: '2026-07-01',
                 to: '2026-07-31'
             },
-            summary: {
-                sales_count: '10',
-                subtotal: '1000.00',
-                discount_total: '50.00',
-                tax: '152.00',
-                total: '1102.00'
-            }
+            completed_sales_count: 10,
+            cancelled_sales_count: 2,
+            total_sold: '1102.00',
+            average_ticket: '110.20'
         };
 
         reportService.getSalesSummary.mockResolvedValue(serviceResult);
@@ -92,13 +89,17 @@ describe('GET /api/reports/sales-by-payment-method', () => {
             paymentMethods: [
                 {
                     payment_method: 'CASH',
-                    sales_count: '5',
-                    total: '750.00'
+                    completed_sales: 5,
+                    cancelled_sales: 1,
+                    total_sold: '750.00',
+                    average_ticket: '150.00'
                 },
                 {
                     payment_method: 'CARD',
-                    sales_count: '3',
-                    total: '500.00'
+                    completed_sales: 3,
+                    cancelled_sales: 0,
+                    total_sold: '500.00',
+                    average_ticket: '166.67'
                 }
             ]
         };
@@ -147,14 +148,18 @@ describe('GET /api/reports/sales-by-day', () => {
             },
             days: [
                 {
-                    sale_date: '2026-07-10',
-                    sales_count: '3',
-                    total: '450.00'
+                    date: '2026-07-10',
+                    completed_sales: 3,
+                    cancelled_sales: 1,
+                    total_sold: '450.00',
+                    average_ticket: '150.00'
                 },
                 {
-                    sale_date: '2026-07-11',
-                    sales_count: '2',
-                    total: '300.00'
+                    date: '2026-07-11',
+                    completed_sales: 2,
+                    cancelled_sales: 0,
+                    total_sold: '300.00',
+                    average_ticket: '150.00'
                 }
             ]
         };
@@ -197,16 +202,18 @@ describe('GET /api/reports/low-stock-products', () => {
         const serviceResult = {
             products: [
                 {
-                    product_id: '1',
+                    product_id: 1,
                     product_name: 'Coffee',
                     stock: 2,
-                    minimum_stock: 5
+                    minimum_stock: 5,
+                    units_needed: 3
                 },
                 {
-                    product_id: '2',
+                    product_id: 2,
                     product_name: 'Sugar',
                     stock: 0,
-                    minimum_stock: 3
+                    minimum_stock: 3,
+                    units_needed: 3
                 }
             ]
         };
@@ -250,8 +257,10 @@ describe('GET /api/reports/purchases-by-supplier', () => {
                 {
                     supplier_id: '1',
                     supplier_name: 'Main Supplier',
-                    purchase_count: '4',
-                    total: '900.00'
+                    completed_purchases: 4,
+                    cancelled_purchases: 1,
+                    total_purchased: '900.00',
+                    average_purchase: '225.00'
                 }
             ]
         };
@@ -302,9 +311,11 @@ describe('GET /api/reports/top-selling-products', () => {
             limit: 5,
             products: [
                 {
-                    product_id: '1',
+                    product_id: 1,
                     product_name: 'Coffee',
-                    quantity_sold: '20'
+                    completed_sales: 4,
+                    units_sold: 20,
+                    total_sold: '400.00'
                 }
             ]
         };
