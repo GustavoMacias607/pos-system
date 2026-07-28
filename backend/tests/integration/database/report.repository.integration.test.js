@@ -464,3 +464,64 @@ test('returns sales grouped by day within the date range', async () => {
         }
     ]);
 });
+
+test('returns active products with stock at or below the minimum', async () => {
+    const productsResult = await pool.query(`
+        INSERT INTO products (
+            name,
+            description,
+            price,
+            stock,
+            minimum_stock,
+            active
+        )
+        VALUES
+            ('Café', 'Stock muy bajo', 10.00, 1, 10, TRUE),
+            ('Azúcar', 'Stock bajo', 8.00, 2, 7, TRUE),
+            ('Frijol', 'Stock bajo', 20.00, 2, 7, TRUE),
+            ('Galleta', 'Stock en el mínimo', 7.00, 5, 5, TRUE),
+            ('Té', 'Stock suficiente', 7.00, 10, 5, TRUE),
+            ('Producto inactivo', 'Stock bajo e inactivo', 15.00, 0, 20, FALSE)
+        RETURNING id, name
+    `);
+
+    const productIds = Object.fromEntries(
+        productsResult.rows.map((product) => [
+            product.name,
+            product.id
+        ])
+    );
+
+    const result = await reportRepository.getLowStockProducts();
+
+    expect(result).toEqual([
+        {
+            product_id: productIds['Café'],
+            product_name: 'Café',
+            stock: 1,
+            minimum_stock: 10,
+            units_needed: 9
+        },
+        {
+            product_id: productIds['Azúcar'],
+            product_name: 'Azúcar',
+            stock: 2,
+            minimum_stock: 7,
+            units_needed: 5
+        },
+        {
+            product_id: productIds['Frijol'],
+            product_name: 'Frijol',
+            stock: 2,
+            minimum_stock: 7,
+            units_needed: 5
+        },
+        {
+            product_id: productIds['Galleta'],
+            product_name: 'Galleta',
+            stock: 5,
+            minimum_stock: 5,
+            units_needed: 0
+        }
+    ]);
+});
