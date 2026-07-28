@@ -14,6 +14,10 @@ const reportRepository = require(
 beforeEach(async () => {
     await pool.query(`
         TRUNCATE TABLE
+            purchase_details,
+            purchases,
+            suppliers,
+            users,
             sale_details,
             sales,
             products
@@ -522,6 +526,132 @@ test('returns active products with stock at or below the minimum', async () => {
             stock: 5,
             minimum_stock: 5,
             units_needed: 0
+        }
+    ]);
+});
+
+test('returns purchases grouped by supplier within the date range', async () => {
+    const userResult = await pool.query(`
+        INSERT INTO users (
+            name,
+            email,
+            password_hash,
+            role
+        )
+        VALUES (
+            'Usuario de prueba',
+            'reports@example.com',
+            'test-password-hash',
+            'ADMIN'
+        )
+        RETURNING id
+    `);
+
+    const userId = userResult.rows[0].id;
+
+    const suppliersResult = await pool.query(`
+        INSERT INTO suppliers (name)
+        VALUES
+            ('Proveedor A'),
+            ('Proveedor B'),
+            ('Proveedor C')
+        RETURNING id, name
+    `);
+
+    const supplierIds = Object.fromEntries(
+        suppliersResult.rows.map((supplier) => [
+            supplier.name,
+            supplier.id
+        ])
+    );
+
+    await pool.query(
+        `
+        INSERT INTO purchases (
+            supplier_id,
+            created_by_user_id,
+            subtotal,
+            tax,
+            total,
+            status,
+            created_at
+        )
+        VALUES
+            (
+                $1,
+                $4,
+                500.00,
+                0.00,
+                500.00,
+                'COMPLETED',
+                '2026-07-01 00:00:00-06'
+            ),
+            (
+                $1,
+                $4,
+                300.00,
+                0.00,
+                300.00,
+                'COMPLETED',
+                '2026-07-15 12:00:00-06'
+            ),
+            (
+                $1,
+                $4,
+                900.00,
+                0.00,
+                900.00,
+                'CANCELLED',
+                '2026-07-20 12:00:00-06'
+            ),
+            (
+                $2,
+                $4,
+                600.00,
+                0.00,
+                600.00,
+                'COMPLETED',
+                '2026-07-31 23:59:59.999999-06'
+            ),
+            (
+                $3,
+                $4,
+                1000.00,
+                0.00,
+                1000.00,
+                'COMPLETED',
+                '2026-06-30 23:59:59.999999-06'
+            )
+        `,
+        [
+            supplierIds['Proveedor A'],
+            supplierIds['Proveedor B'],
+            supplierIds['Proveedor C'],
+            userId
+        ]
+    );
+
+    const result = await reportRepository.getPurchasesBySupplier(
+        '2026-07-01',
+        '2026-07-31'
+    );
+
+    expect(result).toEqual([
+        {
+            supplier_id: supplierIds['Proveedor A'],
+            supplier_name: 'Proveedor A',
+            completed_purchases: 2,
+            cancelled_purchases: 1,
+            total_purchased: '800.00',
+            average_purchase: '400.00'
+        },
+        {
+            supplier_id: supplierIds['Proveedor B'],
+            supplier_name: 'Proveedor B',
+            completed_purchases: 1,
+            cancelled_purchases: 0,
+            total_purchased: '600.00',
+            average_purchase: '600.00'
         }
     ]);
 });
