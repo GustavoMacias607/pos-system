@@ -214,3 +214,66 @@ test('returns the top-selling products from completed sales', async () => {
 
     expect(limitedResult).toEqual(result.slice(0, 2));
 });
+
+test('returns the sales summary within the date range', async () => {
+    await pool.query(`
+        INSERT INTO sales (
+            subtotal,
+            discount_total,
+            tax,
+            total,
+            payment_method,
+            status,
+            created_at
+        )
+        VALUES
+            (
+                100.00,
+                0.00,
+                0.00,
+                100.00,
+                'CASH',
+                'COMPLETED',
+                '2026-07-10 12:00:00-06'
+            ),
+            (
+                50.00,
+                0.00,
+                0.00,
+                50.00,
+                'CARD',
+                'COMPLETED',
+                '2026-07-31 12:00:00-06'
+            ),
+            (
+                40.00,
+                0.00,
+                0.00,
+                40.00,
+                'TRANSFER',
+                'CANCELLED',
+                '2026-07-20 12:00:00-06'
+            ),
+            (
+                200.00,
+                0.00,
+                0.00,
+                200.00,
+                'CASH',
+                'COMPLETED',
+                '2026-08-01 12:00:00-06'
+            )
+    `);
+
+    const result = await reportRepository.getSalesSummary(
+        '2026-07-01',
+        '2026-07-31'
+    );
+
+    expect(result).toEqual({
+        completed_sales_count: 2,
+        cancelled_sales_count: 1,
+        total_sold: '150.00',
+        average_ticket: '75.00'
+    });
+});
