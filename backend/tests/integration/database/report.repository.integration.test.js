@@ -6,9 +6,9 @@ if (process.env.DB_NAME !== expectedDatabase) {
     );
 }
 
-const pool = require('../../src/config/database');
+const pool = require('../../../src/config/database');
 const reportRepository = require(
-    '../../src/repositories/report.repository'
+    '../../../src/repositories/report.repository'
 );
 
 beforeEach(async () => {

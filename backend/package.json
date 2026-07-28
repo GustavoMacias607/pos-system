@@ -7,11 +7,11 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "migrate": "node scripts/runMigrations.js",
-    "test": "jest --runInBand --testPathIgnorePatterns=tests/integration/report.repository.integration.test.js",
-    "test:watch": "jest --watch --testPathIgnorePatterns=tests/integration/report.repository.integration.test.js",
-    "test:coverage": "jest --coverage --runInBand --testPathIgnorePatterns=tests/integration/report.repository.integration.test.js",
+    "test": "jest --runInBand --testPathIgnorePatterns=tests/integration/database",
+    "test:watch": "jest --watch --testPathIgnorePatterns=tests/integration/database",
+    "test:coverage": "jest --coverage --runInBand --testPathIgnorePatterns=tests/integration/database",
     "test:db:migrate": "DB_HOST=127.0.0.1 DB_PORT=5433 DB_USER=pos_test_user DB_PASSWORD=pos_test_password DB_NAME=pos_test_db node scripts/runTestMigrations.js",
-    "test:integration:report": "DB_HOST=127.0.0.1 DB_PORT=5433 DB_USER=pos_test_user DB_PASSWORD=pos_test_password DB_NAME=pos_test_db jest tests/integration/report.repository.integration.test.js --runInBand"
+    "test:integration:db": "DB_HOST=127.0.0.1 DB_PORT=5433 DB_USER=pos_test_user DB_PASSWORD=pos_test_password DB_NAME=pos_test_db jest tests/integration/database --runInBand"
   },
   "keywords": [],
   "author": "",
