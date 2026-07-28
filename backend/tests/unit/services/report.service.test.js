@@ -3,7 +3,8 @@ jest.mock('../../../src/repositories/report.repository', () => ({
     getSalesByPaymentMethod: jest.fn(),
     getSalesByDay: jest.fn(),
     getTopSellingProducts: jest.fn(),
-    getLowStockProducts: jest.fn()
+    getLowStockProducts: jest.fn(),
+    getPurchasesBySupplier: jest.fn()
 }));
 
 const reportService = require('../../../src/services/report.service');
@@ -193,6 +194,57 @@ describe('reportService.getLowStockProducts', () => {
         expect(
             reportRepository.getLowStockProducts
         ).toHaveBeenCalledWith();
+    });
+});
+
+describe('reportService.getPurchasesBySupplier', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    test('returns purchases grouped by supplier with the requested period', async () => {
+        const repositoryResult = [
+            {
+                supplier_id: '1',
+                supplier_name: 'Coffee Supplier',
+                purchases_count: 3,
+                total_purchased: '750.00'
+            },
+            {
+                supplier_id: '2',
+                supplier_name: 'Milk Supplier',
+                purchases_count: 2,
+                total_purchased: '400.00'
+            }
+        ];
+
+        reportRepository.getPurchasesBySupplier.mockResolvedValue(
+            repositoryResult
+        );
+
+        const result = await reportService.getPurchasesBySupplier(
+            '2026-07-01',
+            '2026-07-31'
+        );
+
+        expect(result).toEqual({
+            period: {
+                from: '2026-07-01',
+                to: '2026-07-31'
+            },
+            suppliers: repositoryResult
+        });
+
+        expect(
+            reportRepository.getPurchasesBySupplier
+        ).toHaveBeenCalledTimes(1);
+
+        expect(
+            reportRepository.getPurchasesBySupplier
+        ).toHaveBeenCalledWith(
+            '2026-07-01',
+            '2026-07-31'
+        );
     });
 });
 
