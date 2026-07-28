@@ -375,3 +375,92 @@ test('returns sales grouped by payment method within the date range', async () =
         }
     ]);
 });
+
+test('returns sales grouped by day within the date range', async () => {
+    await pool.query(`
+        INSERT INTO sales (
+            subtotal,
+            discount_total,
+            tax,
+            total,
+            payment_method,
+            status,
+            created_at
+        )
+        VALUES
+            (
+                100.00,
+                0.00,
+                0.00,
+                100.00,
+                'CASH',
+                'COMPLETED',
+                '2026-07-10 12:00:00-06'
+            ),
+            (
+                40.00,
+                0.00,
+                0.00,
+                40.00,
+                'CARD',
+                'CANCELLED',
+                '2026-07-10 15:00:00-06'
+            ),
+            (
+                50.00,
+                0.00,
+                0.00,
+                50.00,
+                'CASH',
+                'COMPLETED',
+                '2026-07-12 10:00:00-06'
+            ),
+            (
+                100.00,
+                0.00,
+                0.00,
+                100.00,
+                'TRANSFER',
+                'COMPLETED',
+                '2026-07-12 18:00:00-06'
+            ),
+            (
+                200.00,
+                0.00,
+                0.00,
+                200.00,
+                'CASH',
+                'COMPLETED',
+                '2026-07-13 12:00:00-06'
+            )
+    `);
+
+    const result = await reportRepository.getSalesByDay(
+        '2026-07-10',
+        '2026-07-12'
+    );
+
+    expect(result).toEqual([
+        {
+            date: '2026-07-10',
+            completed_sales: 1,
+            cancelled_sales: 1,
+            total_sold: '100.00',
+            average_ticket: '100.00'
+        },
+        {
+            date: '2026-07-11',
+            completed_sales: 0,
+            cancelled_sales: 0,
+            total_sold: '0.00',
+            average_ticket: '0.00'
+        },
+        {
+            date: '2026-07-12',
+            completed_sales: 2,
+            cancelled_sales: 0,
+            total_sold: '150.00',
+            average_ticket: '75.00'
+        }
+    ]);
+});
