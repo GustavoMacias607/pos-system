@@ -277,3 +277,101 @@ test('returns the sales summary within the date range', async () => {
         average_ticket: '75.00'
     });
 });
+
+test('returns sales grouped by payment method within the date range', async () => {
+    await pool.query(`
+        INSERT INTO sales (
+            subtotal,
+            discount_total,
+            tax,
+            total,
+            payment_method,
+            status,
+            created_at
+        )
+        VALUES
+            (
+                100.00,
+                0.00,
+                0.00,
+                100.00,
+                'CASH',
+                'COMPLETED',
+                '2026-07-10 12:00:00-06'
+            ),
+            (
+                50.00,
+                0.00,
+                0.00,
+                50.00,
+                'CASH',
+                'COMPLETED',
+                '2026-07-15 12:00:00-06'
+            ),
+            (
+                40.00,
+                0.00,
+                0.00,
+                40.00,
+                'CASH',
+                'CANCELLED',
+                '2026-07-20 12:00:00-06'
+            ),
+            (
+                75.00,
+                0.00,
+                0.00,
+                75.00,
+                'CARD',
+                'COMPLETED',
+                '2026-07-25 12:00:00-06'
+            ),
+            (
+                25.00,
+                0.00,
+                0.00,
+                25.00,
+                'CARD',
+                'CANCELLED',
+                '2026-07-28 12:00:00-06'
+            ),
+            (
+                200.00,
+                0.00,
+                0.00,
+                200.00,
+                'TRANSFER',
+                'COMPLETED',
+                '2026-08-01 12:00:00-06'
+            )
+    `);
+
+    const result = await reportRepository.getSalesByPaymentMethod(
+        '2026-07-01',
+        '2026-07-31'
+    );
+
+    expect(result).toEqual([
+        {
+            payment_method: 'CASH',
+            completed_sales: 2,
+            cancelled_sales: 1,
+            total_sold: '150.00',
+            average_ticket: '75.00'
+        },
+        {
+            payment_method: 'CARD',
+            completed_sales: 1,
+            cancelled_sales: 1,
+            total_sold: '75.00',
+            average_ticket: '75.00'
+        },
+        {
+            payment_method: 'TRANSFER',
+            completed_sales: 0,
+            cancelled_sales: 0,
+            total_sold: '0.00',
+            average_ticket: '0.00'
+        }
+    ]);
+});
