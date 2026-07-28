@@ -1,5 +1,6 @@
 jest.mock('../../../src/repositories/report.repository', () => ({
     getSalesSummary: jest.fn(),
+    getSalesByPaymentMethod: jest.fn(),
     getTopSellingProducts: jest.fn()
 }));
 
@@ -47,6 +48,55 @@ describe('reportService.getSalesSummary', () => {
 
         expect(
             reportRepository.getSalesSummary
+        ).toHaveBeenCalledWith(
+            '2026-07-01',
+            '2026-07-31'
+        );
+    });
+});
+
+describe('reportService.getSalesByPaymentMethod', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    test('returns sales grouped by payment method with the requested period', async () => {
+        const repositoryResult = [
+            {
+                payment_method: 'CASH',
+                sales_count: 3,
+                total_sold: '300.00'
+            },
+            {
+                payment_method: 'CARD',
+                sales_count: 2,
+                total_sold: '200.00'
+            }
+        ];
+
+        reportRepository.getSalesByPaymentMethod.mockResolvedValue(
+            repositoryResult
+        );
+
+        const result = await reportService.getSalesByPaymentMethod(
+            '2026-07-01',
+            '2026-07-31'
+        );
+
+        expect(result).toEqual({
+            period: {
+                from: '2026-07-01',
+                to: '2026-07-31'
+            },
+            paymentMethods: repositoryResult
+        });
+
+        expect(
+            reportRepository.getSalesByPaymentMethod
+        ).toHaveBeenCalledTimes(1);
+
+        expect(
+            reportRepository.getSalesByPaymentMethod
         ).toHaveBeenCalledWith(
             '2026-07-01',
             '2026-07-31'
