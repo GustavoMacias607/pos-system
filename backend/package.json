@@ -9,7 +9,8 @@
     "migrate": "node scripts/runMigrations.js",
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage --runInBand"
+    "test:coverage": "jest --coverage --runInBand",
+    "test:db:migrate": "DB_HOST=127.0.0.1 DB_PORT=5433 DB_USER=pos_test_user DB_PASSWORD=pos_test_password DB_NAME=pos_test_db node scripts/runTestMigrations.js"
   },
   "keywords": [],
   "author": "",
