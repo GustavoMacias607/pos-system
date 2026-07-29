@@ -1,3 +1,5 @@
+const mockVerifyIdToken = jest.fn();
+
 jest.mock('bcrypt', () => ({
     compare: jest.fn()
 }));
@@ -18,12 +20,13 @@ jest.mock('otplib', () => ({
 
 jest.mock('google-auth-library', () => ({
     OAuth2Client: jest.fn().mockImplementation(() => ({
-        verifyIdToken: jest.fn()
+        verifyIdToken: mockVerifyIdToken
     }))
 }));
 
 jest.mock('../../../src/repositories/user.repository', () => ({
     findByEmailWithPassword: jest.fn(),
+    findByEmail: jest.fn(),
     findById: jest.fn(),
     findTwoFactorByUserId: jest.fn(),
     updateTwoFactorSecret: jest.fn(),
@@ -52,8 +55,16 @@ jest.mock(
 
 jest.mock(
     '../../../src/repositories/userIdentity.repository',
-    () => ({})
+    () => ({
+        findByProviderAndProviderUserId: jest.fn(),
+        findByUserIdAndProvider: jest.fn(),
+        create: jest.fn()
+    })
 );
+
+const {
+    AUTH_PROVIDERS
+} = require('../../../src/constants/authProviders');
 
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -66,6 +77,9 @@ const userSessionRepository =
 
 const userBackupCodeRepository =
     require('../../../src/repositories/userBackupCode.repository');
+
+const userIdentityRepository =
+    require('../../../src/repositories/userIdentity.repository');
 
 const crypto = require('crypto');
 const QRCode = require('qrcode');
@@ -83,12 +97,16 @@ const {
     setupTwoFactor,
     verifyTwoFactorSetup,
     verifyTwoFactorLogin,
-    disableTwoFactor
+    disableTwoFactor,
+    loginWithGoogle
 } = require('../../../src/services/auth.service');
 
 describe('auth.service', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+
+        process.env.GOOGLE_CLIENT_ID =
+            'test-google-client-id';
 
         jwt.sign.mockReturnValue('mock-access-token');
     });
@@ -1158,6 +1176,471 @@ describe('auth.service', () => {
 
             expect(
                 userBackupCodeRepository.deleteByUserId
+            ).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('loginWithGoogle', () => {
+        it('creates a session for an already linked Google identity', async () => {
+            mockVerifyIdToken.mockResolvedValue({
+                getPayload: () => ({
+                    sub: 'google-user-123',
+                    email: 'gustavo@example.com',
+                    email_verified: true,
+                    name: 'Gustavo',
+                    picture: 'https://example.com/profile.jpg'
+                })
+            });
+
+            userIdentityRepository
+                .findByProviderAndProviderUserId
+                .mockResolvedValue({
+                    id: 20,
+                    user_id: 7,
+                    provider: AUTH_PROVIDERS.GOOGLE,
+                    provider_user_id: 'google-user-123',
+                    email: 'gustavo@example.com'
+                });
+
+            userRepository.findById.mockResolvedValue({
+                id: 7,
+                name: 'Gustavo',
+                email: 'gustavo@example.com',
+                role: 'ADMIN',
+                active: true,
+                created_at: new Date('2026-07-01'),
+                updated_at: new Date('2026-07-20')
+            });
+
+            userSessionRepository.create.mockResolvedValue({
+                id: 101
+            });
+
+            const result = await loginWithGoogle(
+                {
+                    idToken: 'valid-google-id-token'
+                },
+                {
+                    userAgent: 'Jest test client',
+                    ipAddress: '127.0.0.1'
+                }
+            );
+
+            expect(mockVerifyIdToken).toHaveBeenCalledWith({
+                idToken: 'valid-google-id-token',
+                audience: 'test-google-client-id'
+            });
+
+            expect(
+                userIdentityRepository
+                    .findByProviderAndProviderUserId
+            ).toHaveBeenCalledWith(
+                AUTH_PROVIDERS.GOOGLE,
+                'google-user-123'
+            );
+
+            expect(userRepository.findById).toHaveBeenCalledWith(7);
+
+            expect(
+                userSessionRepository.create
+            ).toHaveBeenCalledWith({
+                userId: 7,
+                refreshTokenHash: expect.stringMatching(
+                    /^[a-f0-9]{64}$/
+                ),
+                userAgent: 'Jest test client',
+                ipAddress: '127.0.0.1',
+                expiresAt: expect.any(Date)
+            });
+
+            expect(result).toMatchObject({
+                user: {
+                    id: 7,
+                    name: 'Gustavo',
+                    email: 'gustavo@example.com',
+                    role: 'ADMIN',
+                    active: true
+                },
+                accessToken: 'mock-access-token',
+                refreshToken: expect.any(String)
+            });
+
+            expect(
+                userRepository.findByEmail
+            ).not.toHaveBeenCalled();
+
+            expect(
+                userIdentityRepository.findByUserIdAndProvider
+            ).not.toHaveBeenCalled();
+
+            expect(
+                userIdentityRepository.create
+            ).not.toHaveBeenCalled();
+        });
+
+        it('links an existing user by verified email and creates a session', async () => {
+            mockVerifyIdToken.mockResolvedValue({
+                getPayload: () => ({
+                    sub: 'google-user-456',
+                    email: 'gustavo@example.com',
+                    email_verified: true,
+                    name: 'Gustavo',
+                    picture: 'https://example.com/profile.jpg'
+                })
+            });
+
+            userIdentityRepository
+                .findByProviderAndProviderUserId
+                .mockResolvedValue(null);
+
+            const user = {
+                id: 7,
+                name: 'Gustavo',
+                email: 'gustavo@example.com',
+                role: 'ADMIN',
+                active: true,
+                created_at: new Date('2026-07-01'),
+                updated_at: new Date('2026-07-20')
+            };
+
+            userRepository.findByEmail.mockResolvedValue(user);
+
+            userIdentityRepository
+                .findByUserIdAndProvider
+                .mockResolvedValue(null);
+
+            userIdentityRepository.create.mockResolvedValue({
+                id: 21,
+                user_id: 7,
+                provider: AUTH_PROVIDERS.GOOGLE,
+                provider_user_id: 'google-user-456',
+                email: 'gustavo@example.com'
+            });
+
+            userSessionRepository.create.mockResolvedValue({
+                id: 102
+            });
+
+            const result = await loginWithGoogle(
+                {
+                    idToken: 'valid-google-id-token'
+                },
+                {
+                    userAgent: 'Jest test client',
+                    ipAddress: '127.0.0.1'
+                }
+            );
+
+            expect(mockVerifyIdToken).toHaveBeenCalledWith({
+                idToken: 'valid-google-id-token',
+                audience: 'test-google-client-id'
+            });
+
+            expect(
+                userIdentityRepository
+                    .findByProviderAndProviderUserId
+            ).toHaveBeenCalledWith(
+                AUTH_PROVIDERS.GOOGLE,
+                'google-user-456'
+            );
+
+            expect(userRepository.findByEmail).toHaveBeenCalledWith(
+                'gustavo@example.com'
+            );
+
+            expect(
+                userIdentityRepository.findByUserIdAndProvider
+            ).toHaveBeenCalledWith(
+                7,
+                AUTH_PROVIDERS.GOOGLE
+            );
+
+            expect(
+                userIdentityRepository.create
+            ).toHaveBeenCalledWith({
+                userId: 7,
+                provider: AUTH_PROVIDERS.GOOGLE,
+                providerUserId: 'google-user-456',
+                email: 'gustavo@example.com'
+            });
+
+            expect(userRepository.findById).not.toHaveBeenCalled();
+
+            expect(
+                userSessionRepository.create
+            ).toHaveBeenCalledWith({
+                userId: 7,
+                refreshTokenHash: expect.stringMatching(
+                    /^[a-f0-9]{64}$/
+                ),
+                userAgent: 'Jest test client',
+                ipAddress: '127.0.0.1',
+                expiresAt: expect.any(Date)
+            });
+
+            expect(result).toMatchObject({
+                user: {
+                    id: 7,
+                    name: 'Gustavo',
+                    email: 'gustavo@example.com',
+                    role: 'ADMIN',
+                    active: true
+                },
+                accessToken: 'mock-access-token',
+                refreshToken: expect.any(String)
+            });
+        });
+
+        it('rejects an invalid Google ID token without creating a session', async () => {
+            mockVerifyIdToken.mockRejectedValue(
+                new Error('Google verification failed')
+            );
+
+            await expect(
+                loginWithGoogle({
+                    idToken: 'invalid-google-id-token'
+                })
+            ).rejects.toMatchObject({
+                message: 'Invalid Google ID token',
+                statusCode: 401
+            });
+
+            expect(mockVerifyIdToken).toHaveBeenCalledWith({
+                idToken: 'invalid-google-id-token',
+                audience: 'test-google-client-id'
+            });
+
+            expect(
+                userIdentityRepository
+                    .findByProviderAndProviderUserId
+            ).not.toHaveBeenCalled();
+
+            expect(userRepository.findByEmail).not.toHaveBeenCalled();
+            expect(userRepository.findById).not.toHaveBeenCalled();
+            expect(userIdentityRepository.create).not.toHaveBeenCalled();
+            expect(userSessionRepository.create).not.toHaveBeenCalled();
+        });
+
+        it('rejects an unverified Google email without creating a session', async () => {
+            mockVerifyIdToken.mockResolvedValue({
+                getPayload: () => ({
+                    sub: 'google-user-789',
+                    email: 'gustavo@example.com',
+                    email_verified: false,
+                    name: 'Gustavo',
+                    picture: 'https://example.com/profile.jpg'
+                })
+            });
+
+            await expect(
+                loginWithGoogle({
+                    idToken: 'unverified-email-id-token'
+                })
+            ).rejects.toMatchObject({
+                message: 'Google account email is not verified',
+                statusCode: 403
+            });
+
+            expect(mockVerifyIdToken).toHaveBeenCalledWith({
+                idToken: 'unverified-email-id-token',
+                audience: 'test-google-client-id'
+            });
+
+            expect(
+                userIdentityRepository
+                    .findByProviderAndProviderUserId
+            ).not.toHaveBeenCalled();
+
+            expect(userRepository.findByEmail).not.toHaveBeenCalled();
+            expect(userRepository.findById).not.toHaveBeenCalled();
+
+            expect(
+                userIdentityRepository.create
+            ).not.toHaveBeenCalled();
+
+            expect(
+                userSessionRepository.create
+            ).not.toHaveBeenCalled();
+        });
+
+        it('rejects login when no local user exists for the verified email', async () => {
+            mockVerifyIdToken.mockResolvedValue({
+                getPayload: () => ({
+                    sub: 'google-user-999',
+                    email: 'unknown@example.com',
+                    email_verified: true,
+                    name: 'Unknown User',
+                    picture: 'https://example.com/profile.jpg'
+                })
+            });
+
+            userIdentityRepository
+                .findByProviderAndProviderUserId
+                .mockResolvedValue(null);
+
+            userRepository.findByEmail.mockResolvedValue(null);
+
+            await expect(
+                loginWithGoogle({
+                    idToken: 'valid-google-id-token'
+                })
+            ).rejects.toMatchObject({
+                message: 'User account does not exist',
+                statusCode: 404
+            });
+
+            expect(
+                userIdentityRepository
+                    .findByProviderAndProviderUserId
+            ).toHaveBeenCalledWith(
+                AUTH_PROVIDERS.GOOGLE,
+                'google-user-999'
+            );
+
+            expect(userRepository.findByEmail).toHaveBeenCalledWith(
+                'unknown@example.com'
+            );
+
+            expect(userRepository.findById).not.toHaveBeenCalled();
+
+            expect(
+                userIdentityRepository.findByUserIdAndProvider
+            ).not.toHaveBeenCalled();
+
+            expect(
+                userIdentityRepository.create
+            ).not.toHaveBeenCalled();
+
+            expect(
+                userSessionRepository.create
+            ).not.toHaveBeenCalled();
+        });
+
+        it('rejects login when the user already has a different Google identity linked', async () => {
+            mockVerifyIdToken.mockResolvedValue({
+                getPayload: () => ({
+                    sub: 'new-google-user-123',
+                    email: 'gustavo@example.com',
+                    email_verified: true,
+                    name: 'Gustavo',
+                    picture: 'https://example.com/profile.jpg'
+                })
+            });
+
+            userIdentityRepository
+                .findByProviderAndProviderUserId
+                .mockResolvedValue(null);
+
+            userRepository.findByEmail.mockResolvedValue({
+                id: 7,
+                name: 'Gustavo',
+                email: 'gustavo@example.com',
+                role: 'ADMIN',
+                active: true
+            });
+
+            userIdentityRepository
+                .findByUserIdAndProvider
+                .mockResolvedValue({
+                    id: 20,
+                    user_id: 7,
+                    provider: AUTH_PROVIDERS.GOOGLE,
+                    provider_user_id: 'different-google-user'
+                });
+
+            await expect(
+                loginWithGoogle({
+                    idToken: 'valid-google-id-token'
+                })
+            ).rejects.toMatchObject({
+                message: 'User already has a Google account linked',
+                statusCode: 409
+            });
+
+            expect(
+                userIdentityRepository
+                    .findByProviderAndProviderUserId
+            ).toHaveBeenCalledWith(
+                AUTH_PROVIDERS.GOOGLE,
+                'new-google-user-123'
+            );
+
+            expect(userRepository.findByEmail).toHaveBeenCalledWith(
+                'gustavo@example.com'
+            );
+
+            expect(
+                userIdentityRepository.findByUserIdAndProvider
+            ).toHaveBeenCalledWith(
+                7,
+                AUTH_PROVIDERS.GOOGLE
+            );
+
+            expect(userRepository.findById).not.toHaveBeenCalled();
+            expect(userIdentityRepository.create).not.toHaveBeenCalled();
+            expect(userSessionRepository.create).not.toHaveBeenCalled();
+        });
+
+        it('rejects an inactive user without creating a session', async () => {
+            mockVerifyIdToken.mockResolvedValue({
+                getPayload: () => ({
+                    sub: 'google-user-inactive',
+                    email: 'inactive@example.com',
+                    email_verified: true,
+                    name: 'Inactive User',
+                    picture: 'https://example.com/profile.jpg'
+                })
+            });
+
+            userIdentityRepository
+                .findByProviderAndProviderUserId
+                .mockResolvedValue({
+                    id: 22,
+                    user_id: 8,
+                    provider: AUTH_PROVIDERS.GOOGLE,
+                    provider_user_id: 'google-user-inactive',
+                    email: 'inactive@example.com'
+                });
+
+            userRepository.findById.mockResolvedValue({
+                id: 8,
+                name: 'Inactive User',
+                email: 'inactive@example.com',
+                role: 'EMPLOYEE',
+                active: false
+            });
+
+            await expect(
+                loginWithGoogle({
+                    idToken: 'valid-google-id-token'
+                })
+            ).rejects.toMatchObject({
+                message: 'User is inactive',
+                statusCode: 403
+            });
+
+            expect(
+                userIdentityRepository
+                    .findByProviderAndProviderUserId
+            ).toHaveBeenCalledWith(
+                AUTH_PROVIDERS.GOOGLE,
+                'google-user-inactive'
+            );
+
+            expect(userRepository.findById).toHaveBeenCalledWith(8);
+
+            expect(userRepository.findByEmail).not.toHaveBeenCalled();
+
+            expect(
+                userIdentityRepository.findByUserIdAndProvider
+            ).not.toHaveBeenCalled();
+
+            expect(
+                userIdentityRepository.create
+            ).not.toHaveBeenCalled();
+
+            expect(
+                userSessionRepository.create
             ).not.toHaveBeenCalled();
         });
     });
