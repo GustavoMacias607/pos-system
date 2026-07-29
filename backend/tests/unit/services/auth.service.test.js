@@ -24,7 +24,10 @@ jest.mock('google-auth-library', () => ({
 
 jest.mock('../../../src/repositories/user.repository', () => ({
     findByEmailWithPassword: jest.fn(),
-    findById: jest.fn()
+    findById: jest.fn(),
+    findTwoFactorByUserId: jest.fn(),
+    updateTwoFactorSecret: jest.fn(),
+    enableTwoFactor: jest.fn()
 }));
 
 jest.mock(
@@ -38,7 +41,10 @@ jest.mock(
 
 jest.mock(
     '../../../src/repositories/userBackupCode.repository',
-    () => ({})
+    () => ({
+        deleteByUserId: jest.fn(),
+        createMany: jest.fn()
+    })
 );
 
 jest.mock(
@@ -55,10 +61,24 @@ const userRepository =
 const userSessionRepository =
     require('../../../src/repositories/userSession.repository');
 
+const userBackupCodeRepository =
+    require('../../../src/repositories/userBackupCode.repository');
+
+const crypto = require('crypto');
+const QRCode = require('qrcode');
+
+const {
+    generateSecret,
+    generateURI,
+    verify
+} = require('otplib');
+
 const {
     login,
     refreshAccessToken,
-    logout
+    logout,
+    setupTwoFactor,
+    verifyTwoFactorSetup
 } = require('../../../src/services/auth.service');
 
 describe('auth.service', () => {
@@ -382,6 +402,324 @@ describe('auth.service', () => {
 
             expect(
                 userSessionRepository.create
+            ).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('setupTwoFactor', () => {
+        it('starts two-factor setup and returns the secret and QR code', async () => {
+            const userTwoFactor = {
+                id: 7,
+                email: 'gustavo@example.com',
+                two_factor_secret: null,
+                two_factor_enabled: false,
+                two_factor_enabled_at: null
+            };
+
+            userRepository
+                .findTwoFactorByUserId
+                .mockResolvedValue(userTwoFactor);
+
+            generateSecret.mockReturnValue(
+                'generated-two-factor-secret'
+            );
+
+            userRepository
+                .updateTwoFactorSecret
+                .mockResolvedValue({
+                    ...userTwoFactor,
+                    two_factor_secret:
+                        'generated-two-factor-secret'
+                });
+
+            generateURI.mockReturnValue(
+                'otpauth://totp/POS-System'
+            );
+
+            QRCode.toDataURL.mockResolvedValue(
+                'data:image/png;base64,mock-qr-code'
+            );
+
+            const result = await setupTwoFactor(7);
+
+            expect(
+                userRepository.findTwoFactorByUserId
+            ).toHaveBeenCalledWith(7);
+
+            expect(generateSecret).toHaveBeenCalledTimes(1);
+
+            expect(
+                userRepository.updateTwoFactorSecret
+            ).toHaveBeenCalledWith(
+                7,
+                'generated-two-factor-secret'
+            );
+
+            expect(generateURI).toHaveBeenCalledWith({
+                issuer: 'POS System',
+                label: 'gustavo@example.com',
+                secret: 'generated-two-factor-secret'
+            });
+
+            expect(QRCode.toDataURL).toHaveBeenCalledWith(
+                'otpauth://totp/POS-System'
+            );
+
+            expect(result).toEqual({
+                secret: 'generated-two-factor-secret',
+                otpauthUrl: 'otpauth://totp/POS-System',
+                qrCodeDataUrl:
+                    'data:image/png;base64,mock-qr-code'
+            });
+        });
+
+        it('rejects setup when two-factor authentication is already enabled', async () => {
+            userRepository
+                .findTwoFactorByUserId
+                .mockResolvedValue({
+                    id: 7,
+                    email: 'gustavo@example.com',
+                    two_factor_secret: 'stored-secret',
+                    two_factor_enabled: true,
+                    two_factor_enabled_at: new Date()
+                });
+
+            await expect(
+                setupTwoFactor(7)
+            ).rejects.toMatchObject({
+                message:
+                    'Two-factor authentication is already enabled',
+                statusCode: 400
+            });
+
+            expect(generateSecret).not.toHaveBeenCalled();
+
+            expect(
+                userRepository.updateTwoFactorSecret
+            ).not.toHaveBeenCalled();
+
+            expect(generateURI).not.toHaveBeenCalled();
+            expect(QRCode.toDataURL).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('verifyTwoFactorSetup', () => {
+        it('enables two-factor authentication and creates backup codes', async () => {
+            const enabledAt = new Date(
+                '2026-07-28T12:00:00.000Z'
+            );
+
+            userRepository
+                .findTwoFactorByUserId
+                .mockResolvedValue({
+                    id: 7,
+                    email: 'gustavo@example.com',
+                    two_factor_secret:
+                        'stored-two-factor-secret',
+                    two_factor_enabled: false,
+                    two_factor_enabled_at: null
+                });
+
+            verify.mockResolvedValue({
+                valid: true
+            });
+
+            userRepository.enableTwoFactor.mockResolvedValue({
+                id: 7,
+                email: 'gustavo@example.com',
+                two_factor_enabled: true,
+                two_factor_enabled_at: enabledAt
+            });
+
+            userBackupCodeRepository
+                .deleteByUserId
+                .mockResolvedValue([]);
+
+            userBackupCodeRepository
+                .createMany
+                .mockResolvedValue([]);
+
+            const result = await verifyTwoFactorSetup(7, {
+                token: '123456'
+            });
+
+            expect(
+                userRepository.findTwoFactorByUserId
+            ).toHaveBeenCalledWith(7);
+
+            expect(verify).toHaveBeenCalledWith({
+                secret: 'stored-two-factor-secret',
+                token: '123456'
+            });
+
+            expect(
+                userRepository.enableTwoFactor
+            ).toHaveBeenCalledWith(7);
+
+            expect(
+                userBackupCodeRepository.deleteByUserId
+            ).toHaveBeenCalledWith(7);
+
+            expect(
+                userBackupCodeRepository.createMany
+            ).toHaveBeenCalledTimes(1);
+
+            const [
+                createManyUserId,
+                storedBackupCodeHashes
+            ] =
+                userBackupCodeRepository
+                    .createMany
+                    .mock.calls[0];
+
+            expect(createManyUserId).toBe(7);
+            expect(storedBackupCodeHashes).toHaveLength(10);
+
+            storedBackupCodeHashes.forEach((hash) => {
+                expect(hash).toMatch(/^[a-f0-9]{64}$/);
+            });
+
+            expect(result.backupCodes).toHaveLength(10);
+
+            result.backupCodes.forEach(
+                (backupCode, index) => {
+                    expect(backupCode).toMatch(
+                        /^[A-F0-9]{4}-[A-F0-9]{4}$/
+                    );
+
+                    const expectedHash = crypto
+                        .createHash('sha256')
+                        .update(backupCode)
+                        .digest('hex');
+
+                    expect(
+                        storedBackupCodeHashes[index]
+                    ).toBe(expectedHash);
+                }
+            );
+
+            expect(result).toEqual({
+                id: 7,
+                email: 'gustavo@example.com',
+                two_factor_enabled: true,
+                two_factor_enabled_at: enabledAt,
+                backupCodes: expect.any(Array)
+            });
+        });
+
+        it('rejects an invalid setup token without enabling two-factor authentication', async () => {
+            userRepository
+                .findTwoFactorByUserId
+                .mockResolvedValue({
+                    id: 7,
+                    email: 'gustavo@example.com',
+                    two_factor_secret:
+                        'stored-two-factor-secret',
+                    two_factor_enabled: false,
+                    two_factor_enabled_at: null
+                });
+
+            verify.mockResolvedValue({
+                valid: false
+            });
+
+            await expect(
+                verifyTwoFactorSetup(7, {
+                    token: 'invalid-token'
+                })
+            ).rejects.toMatchObject({
+                message: 'Invalid two-factor token',
+                statusCode: 401
+            });
+
+            expect(verify).toHaveBeenCalledWith({
+                secret: 'stored-two-factor-secret',
+                token: 'invalid-token'
+            });
+
+            expect(
+                userRepository.enableTwoFactor
+            ).not.toHaveBeenCalled();
+
+            expect(
+                userBackupCodeRepository.deleteByUserId
+            ).not.toHaveBeenCalled();
+
+            expect(
+                userBackupCodeRepository.createMany
+            ).not.toHaveBeenCalled();
+        });
+
+        it('rejects verification when setup has not been started', async () => {
+            userRepository
+                .findTwoFactorByUserId
+                .mockResolvedValue({
+                    id: 7,
+                    email: 'gustavo@example.com',
+                    two_factor_secret: null,
+                    two_factor_enabled: false,
+                    two_factor_enabled_at: null
+                });
+
+            await expect(
+                verifyTwoFactorSetup(7, {
+                    token: '123456'
+                })
+            ).rejects.toMatchObject({
+                message:
+                    'Two-factor authentication setup has not been started',
+                statusCode: 400
+            });
+
+            expect(verify).not.toHaveBeenCalled();
+
+            expect(
+                userRepository.enableTwoFactor
+            ).not.toHaveBeenCalled();
+
+            expect(
+                userBackupCodeRepository.deleteByUserId
+            ).not.toHaveBeenCalled();
+
+            expect(
+                userBackupCodeRepository.createMany
+            ).not.toHaveBeenCalled();
+        });
+
+        it('rejects verification when two-factor authentication is already enabled', async () => {
+            userRepository
+                .findTwoFactorByUserId
+                .mockResolvedValue({
+                    id: 7,
+                    email: 'gustavo@example.com',
+                    two_factor_secret:
+                        'stored-two-factor-secret',
+                    two_factor_enabled: true,
+                    two_factor_enabled_at: new Date()
+                });
+
+            await expect(
+                verifyTwoFactorSetup(7, {
+                    token: '123456'
+                })
+            ).rejects.toMatchObject({
+                message:
+                    'Two-factor authentication is already enabled',
+                statusCode: 400
+            });
+
+            expect(verify).not.toHaveBeenCalled();
+
+            expect(
+                userRepository.enableTwoFactor
+            ).not.toHaveBeenCalled();
+
+            expect(
+                userBackupCodeRepository.deleteByUserId
+            ).not.toHaveBeenCalled();
+
+            expect(
+                userBackupCodeRepository.createMany
             ).not.toHaveBeenCalled();
         });
     });
