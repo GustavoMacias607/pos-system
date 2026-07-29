@@ -1,4 +1,5 @@
 jest.mock('../../../src/services/auth.service', () => ({
+    login: jest.fn(),
     loginWithGoogle: jest.fn()
 }));
 
@@ -6,6 +7,143 @@ const request = require('supertest');
 const app = require('../../../src/app');
 const AppError = require('../../../src/errors/AppError');
 const authService = require('../../../src/services/auth.service');
+
+describe('POST /api/auth/login', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    test('returns 200 and login data for valid credentials', async () => {
+        const serviceResult = {
+            user: {
+                id: 7,
+                name: 'Gustavo',
+                email: 'gustavo@example.com',
+                role: 'ADMIN',
+                active: true
+            },
+            accessToken: 'mock-access-token',
+            refreshToken: 'mock-refresh-token'
+        };
+
+        authService.login.mockResolvedValue(serviceResult);
+
+        const response = await request(app)
+            .post('/api/auth/login')
+            .set('User-Agent', 'Jest test client')
+            .send({
+                email: 'gustavo@example.com',
+                password: 'Password123'
+            });
+
+        expect(response.status).toBe(200);
+
+        expect(response.body).toEqual({
+            success: true,
+            data: serviceResult,
+            message: 'Login successful'
+        });
+
+        expect(authService.login).toHaveBeenCalledTimes(1);
+
+        expect(authService.login).toHaveBeenCalledWith(
+            {
+                email: 'gustavo@example.com',
+                password: 'Password123'
+            },
+            {
+                userAgent: 'Jest test client',
+                ipAddress: expect.any(String)
+            }
+        );
+    });
+
+    test('returns 400 when email is missing', async () => {
+        const response = await request(app)
+            .post('/api/auth/login')
+            .send({
+                password: 'Password123'
+            });
+
+        expect(response.status).toBe(400);
+
+        expect(response.body).toEqual({
+            success: false,
+            message: 'Email is required'
+        });
+
+        expect(authService.login).not.toHaveBeenCalled();
+    });
+
+    test('returns 400 when email format is invalid', async () => {
+        const response = await request(app)
+            .post('/api/auth/login')
+            .send({
+                email: 'invalid-email',
+                password: 'Password123'
+            });
+
+        expect(response.status).toBe(400);
+
+        expect(response.body).toEqual({
+            success: false,
+            message: 'Email format is invalid'
+        });
+
+        expect(authService.login).not.toHaveBeenCalled();
+    });
+
+    test('returns 400 when password is missing', async () => {
+        const response = await request(app)
+            .post('/api/auth/login')
+            .send({
+                email: 'gustavo@example.com'
+            });
+
+        expect(response.status).toBe(400);
+
+        expect(response.body).toEqual({
+            success: false,
+            message: 'Password is required'
+        });
+
+        expect(authService.login).not.toHaveBeenCalled();
+    });
+
+    test('propagates an error returned by the login service', async () => {
+        authService.login.mockRejectedValue(
+            new AppError('Invalid email or password', 401)
+        );
+
+        const response = await request(app)
+            .post('/api/auth/login')
+            .set('User-Agent', 'Jest test client')
+            .send({
+                email: 'gustavo@example.com',
+                password: 'WrongPassword'
+            });
+
+        expect(response.status).toBe(401);
+
+        expect(response.body).toEqual({
+            success: false,
+            message: 'Invalid email or password'
+        });
+
+        expect(authService.login).toHaveBeenCalledTimes(1);
+
+        expect(authService.login).toHaveBeenCalledWith(
+            {
+                email: 'gustavo@example.com',
+                password: 'WrongPassword'
+            },
+            {
+                userAgent: 'Jest test client',
+                ipAddress: expect.any(String)
+            }
+        );
+    });
+});
 
 describe('POST /api/auth/google', () => {
     beforeEach(() => {
