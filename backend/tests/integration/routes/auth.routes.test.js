@@ -1,5 +1,6 @@
 jest.mock('../../../src/services/auth.service', () => ({
     login: jest.fn(),
+    refreshAccessToken: jest.fn(),
     loginWithGoogle: jest.fn()
 }));
 
@@ -7,6 +8,115 @@ const request = require('supertest');
 const app = require('../../../src/app');
 const AppError = require('../../../src/errors/AppError');
 const authService = require('../../../src/services/auth.service');
+
+describe('POST /api/auth/refresh', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    test('returns 200 and new tokens for a valid refresh token', async () => {
+        const serviceResult = {
+            accessToken: 'new-mock-access-token',
+            refreshToken: 'new-mock-refresh-token'
+        };
+
+        authService.refreshAccessToken.mockResolvedValueOnce(serviceResult);
+
+        const response = await request(app)
+            .post('/api/auth/refresh')
+            .send({
+                refreshToken: 'valid-refresh-token'
+            });
+
+        expect(response.status).toBe(200);
+
+        expect(response.body).toEqual({
+            success: true,
+            data: serviceResult,
+            message: 'Access token refreshed successfully'
+        });
+
+        expect(authService.refreshAccessToken).toHaveBeenCalledTimes(1);
+
+        expect(authService.refreshAccessToken).toHaveBeenCalledWith({
+            refreshToken: 'valid-refresh-token'
+        });
+    });
+
+    test('returns 400 when refresh token is missing', async () => {
+        const response = await request(app)
+            .post('/api/auth/refresh')
+            .send({});
+
+        expect(response.status).toBe(400);
+
+        expect(response.body).toEqual({
+            success: false,
+            message: 'Refresh token is required'
+        });
+
+        expect(authService.refreshAccessToken).not.toHaveBeenCalled();
+    });
+
+    test('returns 400 when refresh token is not a string', async () => {
+        const response = await request(app)
+            .post('/api/auth/refresh')
+            .send({
+                refreshToken: 12345
+            });
+
+        expect(response.status).toBe(400);
+
+        expect(response.body).toEqual({
+            success: false,
+            message: 'Refresh token must be a string'
+        });
+
+        expect(authService.refreshAccessToken).not.toHaveBeenCalled();
+    });
+
+    test('returns 400 when refresh token is empty', async () => {
+        const response = await request(app)
+            .post('/api/auth/refresh')
+            .send({
+                refreshToken: '   '
+            });
+
+        expect(response.status).toBe(400);
+
+        expect(response.body).toEqual({
+            success: false,
+            message: 'Refresh token cannot be empty'
+        });
+
+        expect(authService.refreshAccessToken).not.toHaveBeenCalled();
+    });
+
+    test('propagates an error returned by the refresh service', async () => {
+        authService.refreshAccessToken.mockRejectedValueOnce(
+            new AppError('Invalid or expired refresh token', 401)
+        );
+
+        const response = await request(app)
+            .post('/api/auth/refresh')
+            .send({
+                refreshToken: 'invalid-refresh-token'
+            });
+
+        expect(response.status).toBe(401);
+
+        expect(response.body).toEqual({
+            success: false,
+            message: 'Invalid or expired refresh token'
+        });
+
+        expect(authService.refreshAccessToken).toHaveBeenCalledTimes(1);
+
+        expect(authService.refreshAccessToken).toHaveBeenCalledWith({
+            refreshToken: 'invalid-refresh-token'
+        });
+    });
+});
 
 describe('POST /api/auth/login', () => {
     beforeEach(() => {
