@@ -1,9 +1,10 @@
 import type {
-    ApiErrorResponse,
     LoginCredentials,
     LoginResponse,
     LogoutResponse,
 } from "../types/auth";
+
+import type { ApiErrorResponse } from "../types/api";
 
 export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
 
