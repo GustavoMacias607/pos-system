@@ -36,3 +36,8 @@ export type ApiErrorResponse = {
   success: false;
   message: string;
 };
+
+export type LogoutResponse = {
+  success: true;
+  message: string;
+};
