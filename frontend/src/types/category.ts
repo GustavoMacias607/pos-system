@@ -17,6 +17,8 @@ export type CreateCategoryRequest = {
     description?: string;
 };
 
+export type UpdateCategoryRequest = CreateCategoryRequest;
+
 export type CategoryResponse = {
     success: true;
     data: Category;

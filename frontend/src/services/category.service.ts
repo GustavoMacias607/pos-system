@@ -1,6 +1,11 @@
 import { getAuthSession } from "./auth-storage.service";
 import type { ApiErrorResponse } from "../types/api";
-import type { CategoriesResponse, CreateCategoryRequest, CategoryResponse } from "../types/category";
+import type {
+    CategoriesResponse,
+    CategoryResponse,
+    CreateCategoryRequest,
+    UpdateCategoryRequest,
+} from "../types/category";
 
 export async function getCategories(): Promise<CategoriesResponse> {
     const session = getAuthSession();
@@ -31,6 +36,30 @@ export async function createCategory(categoryData: CreateCategoryRequest): Promi
 
     const response = await fetch("/api/categories", {
         method: "POST",
+        headers: {
+            Authorization: `Bearer ${session.accessToken}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(categoryData),
+    });
+
+    const result = (await response.json()) as CategoryResponse | ApiErrorResponse;
+
+    if (!result.success) {
+        throw new Error(result.message);
+    }
+
+    return result;
+}
+
+export async function updateCategory(categoryId: number, categoryData: UpdateCategoryRequest): Promise<CategoryResponse> {
+    const session = getAuthSession();
+    if (!session) {
+        throw new Error("No hay una sesión activa");
+    }
+
+    const response = await fetch(`/api/categories/${categoryId}`, {
+        method: "PUT",
         headers: {
             Authorization: `Bearer ${session.accessToken}`,
             "Content-Type": "application/json",

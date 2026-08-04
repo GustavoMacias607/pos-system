@@ -1,8 +1,7 @@
 import { useEffect, useState, type SubmitEvent } from "react";
-import { getCategories, createCategory } from "../services/category.service";
+import { getCategories, createCategory, updateCategory } from "../services/category.service";
 import type { Category, CreateCategoryRequest } from "../types/category";
 import { getAuthSession } from "../services/auth-storage.service";
-
 
 function CategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([]);
@@ -16,10 +15,12 @@ function CategoriesPage() {
     const [successMessage, setSuccessMessage] = useState("");
     const [showForm, setShowForm] = useState(false);
 
+    const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+    const isEditing = editingCategoryId !== null;
 
     const session = getAuthSession();
 
-    const canCreateCategory = session?.user.role === "ADMIN" || session?.user.role === "SUPERVISOR";
+    const canManageCategories = session?.user.role === "ADMIN" || session?.user.role === "SUPERVISOR";
 
     const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -31,7 +32,7 @@ function CategoriesPage() {
         const trimmedDescription = description.trim();
 
         if (trimmedName === "") {
-            setFormErrorMessage("El nombre de la categoría es obligatorio.")
+            setFormErrorMessage("El nombre de la categoría es obligatorio.");
             return;
         }
 
@@ -43,20 +44,64 @@ function CategoriesPage() {
         }
         setIsSubmitting(true);
         try {
+            if (editingCategoryId !== null) {
+                const response = await updateCategory(editingCategoryId, categoryData);
+
+                setCategories((currentCategories) =>
+                    currentCategories.map((category) =>
+                        category.id === response.data.id ? response.data : category
+                    )
+                );
+
+                setName(response.data.name);
+                setDescription(response.data.description ?? "");
+                setSuccessMessage("Categoría actualizada correctamente.");
+                return;
+            }
+
             const response = await createCategory(categoryData);
-            setCategories((currentCategories) => [
-                ...currentCategories,
-                response.data,
-            ])
+            setCategories((currentCategories) => [...currentCategories, response.data]);
             setName("");
             setDescription("");
-            setSuccessMessage("Categoría creada correctamente.")
+            setSuccessMessage("Categoría creada correctamente.");
         } catch (error) {
-            setFormErrorMessage(error instanceof Error ? error.message : "No fue posible crear la categoría.")
-
+            setFormErrorMessage(
+                error instanceof Error
+                    ? error.message
+                    : isEditing
+                        ? "No fue posible actualizar la categoría."
+                        : "No fue posible crear la categoría."
+            );
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleEditCategory = (category: Category) => {
+        setEditingCategoryId(category.id);
+        setName(category.name);
+        setDescription(category.description ?? "");
+        setFormErrorMessage("");
+        setSuccessMessage("");
+        setShowForm(true);
+    };
+
+    const handleOpenCreateForm = () => {
+        resetForm();
+        setShowForm(true);
+    };
+
+    const handleCloseForm = () => {
+        resetForm();
+        setShowForm(false);
+    };
+
+    const resetForm = () => {
+        setName("");
+        setDescription("");
+        setEditingCategoryId(null);
+        setFormErrorMessage("");
+        setSuccessMessage("");
     };
 
     useEffect(() => {
@@ -74,7 +119,7 @@ function CategoriesPage() {
     }, []);
 
     return (
-        <section className="p-1 sm:p-6">
+        <section className="p-4 sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-900">
@@ -86,29 +131,31 @@ function CategoriesPage() {
                     </p>
                 </div>
 
-                {canCreateCategory && (
+                {canManageCategories && (
                     <button
                         type="button"
-                        onClick={() => setShowForm((currentShowForm) => !currentShowForm)}
+                        onClick={showForm ? handleCloseForm : handleOpenCreateForm}
                         aria-expanded={showForm}
                         aria-controls="category-form"
                         className="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 sm:w-auto"
                     >
-                        {showForm ? "Ocultar formulario" : "Nueva categoría"}
+                        {showForm ? "Cerrar formulario" : "Nueva categoría"}
                     </button>
                 )}
             </div>
 
-            {canCreateCategory && showForm && (
+            {canManageCategories && showForm && (
                 <div id="category-form" className="mt-6 flex justify-center sm:justify-end">
                     <div className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                         <div>
                             <h3 className="text-lg font-semibold text-slate-900">
-                                Nueva categoría
+                                {isEditing ? "Editar categoría" : "Nueva categoría"}
                             </h3>
 
                             <p className="mt-1 text-sm text-slate-500">
-                                Registra una categoría para organizar los productos.
+                                {isEditing
+                                    ? "Modifica la información de la categoría seleccionada."
+                                    : "Registra una categoría para organizar los productos."}
                             </p>
                         </div>
 
@@ -171,13 +218,33 @@ function CategoriesPage() {
                                 </div>
                             )}
 
-                            <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                            >
-                                {isSubmitting ? "Creando..." : "Crear categoría"}
-                            </button>
+                            <div className="flex flex-col gap-3 sm:flex-row">
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                                >
+                                    {isSubmitting
+                                        ? isEditing
+                                            ? "Guardando..."
+                                            : "Creando..."
+                                        : isEditing
+                                            ? "Guardar cambios"
+                                            : "Crear categoría"}
+                                </button>
+                                {isEditing && (
+                                    <button
+                                        type="button"
+                                        onClick={handleCloseForm}
+                                        disabled={isSubmitting}
+                                        className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                                    >
+                                        Cancelar edición
+                                    </button>
+                                )}
+                            </div>
+
+
                         </form>
                     </div>
                 </div>
@@ -212,7 +279,7 @@ function CategoriesPage() {
                                 <tr>
                                     <th
                                         scope="col"
-                                        className=" px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:table-cell"
+                                        className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:table-cell"
                                     >
                                         ID
                                     </th>
@@ -230,13 +297,21 @@ function CategoriesPage() {
                                     >
                                         Estado
                                     </th>
+                                    {canManageCategories && (
+                                        <th
+                                            scope="col"
+                                            className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600 sm:px-4"
+                                        >
+                                            Acciones
+                                        </th>
+                                    )}
                                 </tr>
                             </thead>
 
                             <tbody className="divide-y divide-slate-200">
                                 {categories.map((category) => (
                                     <tr key={category.id} className="hover:bg-slate-50">
-                                        <td className=" whitespace-nowrap px-4 py-3 text-sm text-slate-500 sm:table-cell">
+                                        <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-slate-500 sm:table-cell">
                                             {category.id}
                                         </td>
 
@@ -261,6 +336,17 @@ function CategoriesPage() {
                                                 {category.active ? "Activo" : "Inactivo"}
                                             </span>
                                         </td>
+                                        {canManageCategories && (
+                                            <td className="whitespace-nowrap px-3 py-3 text-right sm:px-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleEditCategory(category)}
+                                                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                                                >
+                                                    Editar
+                                                </button>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>
