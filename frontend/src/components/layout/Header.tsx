@@ -1,8 +1,24 @@
+import { useLocation } from "react-router-dom";
+
+const pageTitles: Record<string, string> = {
+    "/": "Dashboard",
+    "/products": "Productos",
+    "/categories": "Categorías",
+    "/inventory": "Inventario",
+    "/sales": "Ventas",
+    "/clients": "Clientes",
+    "/suppliers": "Proveedores",
+    "/users": "Usuarios",
+
+};
+
 function Header() {
+    const location = useLocation();
+    const pageTitle = pageTitles[location.pathname] ?? "POS System";
     return (
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
             <h1 className="text-xl font-semibold text-slate-900">
-                Dashboard
+                {pageTitle}
             </h1>
 
             <div className="flex items-center gap-4">
