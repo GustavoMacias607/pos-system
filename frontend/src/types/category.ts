@@ -11,3 +11,13 @@ export type CategoriesResponse = {
     success: true;
     data: Category[];
 };
+
+export type CreateCategoryRequest = {
+    name: string;
+    description?: string;
+};
+
+export type CategoryResponse = {
+    success: true;
+    data: Category;
+};
