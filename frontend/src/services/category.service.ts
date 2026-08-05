@@ -3,6 +3,7 @@ import type { ApiErrorResponse } from "../types/api";
 import type {
     CategoriesResponse,
     CategoryResponse,
+    CategoryStatusResponse,
     CreateCategoryRequest,
     UpdateCategoryRequest,
 } from "../types/category";
@@ -68,6 +69,50 @@ export async function updateCategory(categoryId: number, categoryData: UpdateCat
     });
 
     const result = (await response.json()) as CategoryResponse | ApiErrorResponse;
+
+    if (!result.success) {
+        throw new Error(result.message);
+    }
+
+    return result;
+}
+
+export async function deactivateCategory(categoryId: number): Promise<CategoryStatusResponse> {
+    const session = getAuthSession();
+    if (!session) {
+        throw new Error("No hay una sesión activa");
+    }
+
+    const response = await fetch(`/api/categories/${categoryId}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${session.accessToken}`,
+        },
+    });
+
+    const result = (await response.json()) as CategoryStatusResponse | ApiErrorResponse;
+
+    if (!result.success) {
+        throw new Error(result.message);
+    }
+
+    return result;
+}
+
+export async function activateCategory(categoryId: number): Promise<CategoryStatusResponse> {
+    const session = getAuthSession();
+    if (!session) {
+        throw new Error("No hay una sesión activa");
+    }
+
+    const response = await fetch(`/api/categories/${categoryId}/activate`, {
+        method: "PATCH",
+        headers: {
+            Authorization: `Bearer ${session.accessToken}`,
+        },
+    });
+
+    const result = (await response.json()) as CategoryStatusResponse | ApiErrorResponse;
 
     if (!result.success) {
         throw new Error(result.message);

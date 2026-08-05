@@ -1,5 +1,5 @@
 import { useEffect, useState, type SubmitEvent } from "react";
-import { getCategories, createCategory, updateCategory } from "../services/category.service";
+import { getCategories, createCategory, updateCategory, deactivateCategory, activateCategory } from "../services/category.service";
 import type { Category, CreateCategoryRequest } from "../types/category";
 import { getAuthSession } from "../services/auth-storage.service";
 
@@ -15,12 +15,19 @@ function CategoriesPage() {
     const [successMessage, setSuccessMessage] = useState("");
     const [showForm, setShowForm] = useState(false);
 
+    const [updatingStatusCategoryId, setUpdatingStatusCategoryId] = useState<number | null>(null);
+    const [statusErrorMessage, setStatusErrorMessage] = useState("");
+    const [statusSuccessMessage, setStatusSuccessMessage] = useState("");
+
     const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
     const isEditing = editingCategoryId !== null;
 
     const session = getAuthSession();
 
     const canManageCategories = session?.user.role === "ADMIN" || session?.user.role === "SUPERVISOR";
+
+
+
 
     const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -104,6 +111,51 @@ function CategoriesPage() {
         setSuccessMessage("");
     };
 
+
+    const handleToggleCategoryStatus = async (category: Category) => {
+        setStatusErrorMessage("");
+        setStatusSuccessMessage("");
+
+        if (category.active) {
+            const confirmed = window.confirm(
+                `¿Seguro que deseas desactivar la categoría "${category.name}"?`
+            );
+
+            if (!confirmed) {
+                return;
+            }
+        }
+
+        setUpdatingStatusCategoryId(category.id);
+
+        try {
+            const response = category.active ? await deactivateCategory(category.id) : await activateCategory(category.id);
+            setCategories((currentCategories) =>
+                currentCategories.map((currentCategory) =>
+                    currentCategory.id === response.data.id
+                        ? response.data
+                        : currentCategory
+                )
+            );
+
+            setStatusSuccessMessage(
+                category.active
+                    ? "Categoría desactivada correctamente."
+                    : "Categoría activada correctamente."
+            );
+        } catch (error) {
+            setStatusErrorMessage(
+                error instanceof Error
+                    ? error.message
+                    : category.active
+                        ? "No fue posible desactivar la categoría."
+                        : "No fue posible activar la categoría."
+            );
+        } finally {
+            setUpdatingStatusCategoryId(null);
+        }
+    };
+
     useEffect(() => {
         const loadCategories = async () => {
             try {
@@ -144,6 +196,23 @@ function CategoriesPage() {
                 )}
             </div>
 
+            {statusErrorMessage && (
+                <p
+                    role="alert"
+                    className="mt-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"
+                >
+                    {statusErrorMessage}
+                </p>
+            )}
+
+            {statusSuccessMessage && (
+                <p
+                    role="status"
+                    className="mt-6 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700"
+                >
+                    {statusSuccessMessage}
+                </p>
+            )}
             {canManageCategories && showForm && (
                 <div id="category-form" className="mt-6 flex justify-center sm:justify-end">
                     <div className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
@@ -316,11 +385,11 @@ function CategoriesPage() {
                                         </td>
 
                                         <td className="min-w-0 px-3 py-3 sm:px-4">
-                                            <p className="break-words font-medium text-slate-900">
+                                            <p className="wrap-break-word font-medium text-slate-900">
                                                 {category.name}
                                             </p>
 
-                                            <p className="mt-1 break-words text-sm text-slate-500">
+                                            <p className="mt-1 wrap-break-word text-sm text-slate-500">
                                                 {category.description ?? "Sin descripción"}
                                             </p>
                                         </td>
@@ -338,13 +407,36 @@ function CategoriesPage() {
                                         </td>
                                         {canManageCategories && (
                                             <td className="whitespace-nowrap px-3 py-3 text-right sm:px-4">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleEditCategory(category)}
-                                                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                                                >
-                                                    Editar
-                                                </button>
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        disabled={updatingStatusCategoryId !== null}
+                                                        type="button"
+                                                        onClick={() => handleEditCategory(category)}
+                                                        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                                    >
+                                                        Editar
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        disabled={updatingStatusCategoryId !== null}
+                                                        onClick={() => void handleToggleCategoryStatus(category)}
+                                                        className={
+                                                            category.active
+                                                                ? "rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                                                : "rounded-lg border border-green-200 bg-white px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        }
+                                                    >
+                                                        {updatingStatusCategoryId === category.id
+                                                            ? category.active
+                                                                ? "Desactivando..."
+                                                                : "Activando..."
+                                                            : category.active
+                                                                ? "Desactivar"
+                                                                : "Activar"}
+                                                    </button>
+
+                                                </div>
                                             </td>
                                         )}
                                     </tr>

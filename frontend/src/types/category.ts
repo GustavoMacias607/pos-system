@@ -23,3 +23,9 @@ export type CategoryResponse = {
     success: true;
     data: Category;
 };
+
+export type CategoryStatusResponse = {
+    success: true;
+    data: Category;
+    message: string;
+};
