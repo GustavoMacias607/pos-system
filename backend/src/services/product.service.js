@@ -3,7 +3,7 @@ const categoryRepository = require('../repositories/category.repository');
 const AppError = require('../errors/AppError');
 
 const getAllProducts = async () => {
-    return await productRepository.findAll();
+    return productRepository.findAll();
 };
 
 const getProductById = async (id) => {
@@ -25,7 +25,9 @@ const createProduct = async (product) => {
 
     await validateCategoryIfProvided(product.categoryId);
 
-    return productRepository.create(product);
+    const createdProduct = await productRepository.create(product);
+
+    return productRepository.findById(createdProduct.id);
 };
 
 const updateProduct = async (id, product) => {
@@ -34,6 +36,7 @@ const updateProduct = async (id, product) => {
     if (existingProduct && existingProduct.id !== Number(id)) {
         throw new AppError('Product name already exists', 409);
     }
+
     await validateCategoryIfProvided(product.categoryId);
 
     const updatedProduct = await productRepository.update(id, product);
@@ -42,29 +45,27 @@ const updateProduct = async (id, product) => {
         throw new AppError('Product not found', 404);
     }
 
-
-
-    return updatedProduct;
+    return productRepository.findById(updatedProduct.id);
 };
 
 const deleteProduct = async (id) => {
-    const product = await productRepository.deactivate(id);
+    const deactivatedProduct = await productRepository.deactivate(id);
 
-    if (!product) {
+    if (!deactivatedProduct) {
         throw new AppError('Product not found', 404);
     }
 
-    return product;
+    return productRepository.findById(deactivatedProduct.id);
 };
 
 const activateProduct = async (id) => {
-    const product = await productRepository.activate(id);
+    const activatedProduct = await productRepository.activate(id);
 
-    if (!product) {
+    if (!activatedProduct) {
         throw new AppError('Product not found', 404);
     }
 
-    return product;
+    return productRepository.findById(activatedProduct.id);
 };
 
 const validateCategoryIfProvided = async (categoryId) => {
@@ -91,4 +92,3 @@ module.exports = {
     deleteProduct,
     activateProduct
 };
-
