@@ -4,6 +4,8 @@ import {
     createProduct,
     getProducts,
     updateProduct,
+    deactivateProduct,
+    activateProduct
 } from "../services/product.service";
 import type { Product, CreateProductRequest } from "../types/product";
 import { getCategories } from "../services/category.service";
@@ -40,6 +42,9 @@ function ProductsPage() {
     const [categoryWarningMessage, setCategoryWarningMessage] = useState("");
 
     const isEditing = editingProductId !== null;
+
+    const [updatingStatusProductId, setUpdatingStatusProductId] = useState<number | null>(null);
+    const [statusErrorMessage, setStatusErrorMessage] = useState("");
 
     const session = getAuthSession();
 
@@ -190,6 +195,55 @@ function ProductsPage() {
                     "La categoría actual está inactiva. Selecciona una categoría activa o deja el producto sin categoría."
                 );
             }
+        }
+    };
+
+    const handleToggleProductStatus = async (product: Product) => {
+        setStatusErrorMessage("");
+        setSuccessMessage("");
+
+
+        if (product.active) {
+            const confirmed = window.confirm(
+                `¿Seguro que deseas desactivar el producto "${product.name}"?`
+            );
+
+            if (!confirmed) {
+                return;
+            }
+        }
+        setUpdatingStatusProductId(product.id);
+
+        try {
+            const response = product.active
+                ? await deactivateProduct(product.id)
+                : await activateProduct(product.id);
+
+            setProducts((currentProducts) =>
+                currentProducts.map((currentProduct) =>
+                    currentProduct.id === response.data.id
+                        ? response.data
+                        : currentProduct
+                )
+            );
+
+            if (editingProductId === product.id) {
+                handleCloseForm();
+            }
+
+            setSuccessMessage(
+                product.active
+                    ? "Producto desactivado correctamente."
+                    : "Producto activado correctamente."
+            );
+        } catch (error) {
+            setStatusErrorMessage(
+                error instanceof Error
+                    ? error.message
+                    : "No fue posible cambiar el estado del producto."
+            );
+        } finally {
+            setUpdatingStatusProductId(null);
         }
     };
 
@@ -407,14 +461,7 @@ function ProductsPage() {
                                 </div>
                             )}
 
-                            {successMessage && (
-                                <div
-                                    role="status"
-                                    className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700"
-                                >
-                                    {successMessage}
-                                </div>
-                            )}
+
                             <div className="flex flex-col gap-3 sm:flex-row">
                                 <button
                                     type="submit"
@@ -448,7 +495,14 @@ function ProductsPage() {
             )
             }
 
-
+            {successMessage && (
+                <div
+                    role="status"
+                    className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700"
+                >
+                    {successMessage}
+                </div>
+            )}
 
 
             {
@@ -466,6 +520,15 @@ function ProductsPage() {
                     </p>
                 )
             }
+
+            {statusErrorMessage && (
+                <p
+                    role="alert"
+                    className="mt-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"
+                >
+                    {statusErrorMessage}
+                </p>
+            )}
 
             {
                 !isLoading && !loadErrorMessage && products.length > 0 && (
@@ -544,14 +607,35 @@ function ProductsPage() {
                                             </td>
                                             {canManageProducts && (
                                                 <td className="whitespace-nowrap px-4 py-3 text-right">
-                                                    <button
-                                                        disabled={isSubmitting}
-                                                        type="button"
-                                                        onClick={() => handleEditProduct(product)}
-                                                        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                                                    >
-                                                        Editar
-                                                    </button>
+                                                    <div className="flex justify-end gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleEditProduct(product)}
+                                                            disabled={isSubmitting || updatingStatusProductId !== null}
+                                                            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        >
+                                                            Editar
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void handleToggleProductStatus(product)}
+                                                            disabled={isSubmitting || updatingStatusProductId !== null}
+                                                            className={
+                                                                product.active
+                                                                    ? "rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                                                    : "rounded-lg border border-green-200 bg-white px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                                            }
+                                                        >
+                                                            {updatingStatusProductId === product.id
+                                                                ? product.active
+                                                                    ? "Desactivando..."
+                                                                    : "Activando..."
+                                                                : product.active
+                                                                    ? "Desactivar"
+                                                                    : "Activar"}
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             )}
                                         </tr>

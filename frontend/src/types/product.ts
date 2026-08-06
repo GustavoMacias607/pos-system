@@ -31,3 +31,9 @@ export type ProductResponse = {
     success: true;
     data: Product;
 };
+
+export type ProductStatusResponse = {
+    success: true;
+    message: string;
+    data: Product;
+};
