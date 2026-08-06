@@ -16,3 +16,16 @@ export type ProductsResponse = {
     success: true;
     data: Product[];
 };
+
+export type CreateProductRequest = {
+    name: string;
+    description?: string;
+    price: number;
+    stock: number;
+    categoryId?: number;
+};
+
+export type ProductResponse = {
+    success: true;
+    data: Product;
+};
