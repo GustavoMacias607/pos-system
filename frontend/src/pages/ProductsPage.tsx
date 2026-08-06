@@ -1,11 +1,11 @@
-import { useEffect, useState, type SubmitEvent } from "react";
+import { useEffect, useMemo, useState, type SubmitEvent } from "react";
 
 import {
     createProduct,
     getProducts,
     updateProduct,
     deactivateProduct,
-    activateProduct
+    activateProduct,
 } from "../services/product.service";
 import type { Product, CreateProductRequest } from "../types/product";
 import { getCategories } from "../services/category.service";
@@ -20,6 +20,13 @@ const formatPrice = (price: string) => {
 };
 
 function ProductsPage() {
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState<
+        "ALL" | "ACTIVE" | "INACTIVE"
+    >("ALL");
+
+    const [categoryFilter, setCategoryFilter] = useState("ALL");
+
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [loadErrorMessage, setLoadErrorMessage] = useState("");
@@ -51,6 +58,66 @@ function ProductsPage() {
     const canManageProducts =
         session?.user.role === "ADMIN" ||
         session?.user.role === "SUPERVISOR";
+
+    const filteredProducts = useMemo(() => {
+        const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+        return products.filter((product) => {
+            const name = product.name.toLowerCase();
+            const description = product.description?.toLowerCase() ?? "";
+            const categoryName = product.category_name?.toLowerCase() ?? "";
+
+            const matchesSearch =
+                normalizedSearchTerm === "" ||
+                name.includes(normalizedSearchTerm) ||
+                description.includes(normalizedSearchTerm) ||
+                categoryName.includes(normalizedSearchTerm);
+
+            const matchesStatus =
+                statusFilter === "ALL" ||
+                (statusFilter === "ACTIVE" && product.active) ||
+                (statusFilter === "INACTIVE" && !product.active);
+
+            let matchesCategory = true;
+
+            if (categoryFilter === "NONE") {
+                matchesCategory = product.category_id === null;
+            } else if (categoryFilter !== "ALL") {
+                matchesCategory =
+                    product.category_id === Number(categoryFilter);
+            }
+
+            return matchesSearch && matchesStatus && matchesCategory;
+        });
+    }, [products, searchTerm, statusFilter, categoryFilter]);
+
+    const productCategoryOptions = useMemo(() => {
+        const categoryMap = new Map<
+            number,
+            {
+                id: number;
+                name: string;
+                active: boolean | null;
+            }
+        >();
+
+        products.forEach((product) => {
+            if (
+                product.category_id !== null &&
+                product.category_name !== null
+            ) {
+                categoryMap.set(product.category_id, {
+                    id: product.category_id,
+                    name: product.category_name,
+                    active: product.category_active,
+                });
+            }
+        });
+
+        return Array.from(categoryMap.values()).sort((firstCategory, secondCategory) =>
+            firstCategory.name.localeCompare(secondCategory.name, "es")
+        );
+    }, [products]);
 
     const resetForm = () => {
         setName("");
@@ -258,7 +325,7 @@ function ProductsPage() {
                 } catch (error) {
                     setCategoryLoadErrorMessage(error instanceof Error ? error.message : "No fue posible cargar las categorías.");
                 }
-            }
+            };
             void loadCategories();
         }
 
@@ -434,6 +501,7 @@ function ProductsPage() {
                                     className="mt-1 block w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                                 />
                             </div>
+
                             {categoryWarningMessage && (
                                 <div
                                     role="status"
@@ -460,7 +528,6 @@ function ProductsPage() {
                                     {formErrorMessage}
                                 </div>
                             )}
-
 
                             <div className="flex flex-col gap-3 sm:flex-row">
                                 <button
@@ -492,18 +559,109 @@ function ProductsPage() {
                         </form>
                     </div>
                 </div >
-            )
-            }
+            )}
+
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+                <div>
+                    <label
+                        htmlFor="product-search"
+                        className="block text-sm font-medium text-slate-700"
+                    >
+                        Buscar productos
+                    </label>
+
+                    <input
+                        id="product-search"
+                        type="search"
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        placeholder="Nombre, descripción o categoría"
+                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    />
+                </div>
+
+
+
+                <div>
+                    <label
+                        htmlFor="product-status-filter"
+                        className="block text-sm font-medium text-slate-700"
+                    >
+                        Estado
+                    </label>
+
+                    <select
+                        id="product-status-filter"
+                        value={statusFilter}
+                        onChange={(event) =>
+                            setStatusFilter(
+                                event.target.value as
+                                | "ALL"
+                                | "ACTIVE"
+                                | "INACTIVE"
+                            )
+                        }
+                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    >
+                        <option value="ALL">Todos los estados</option>
+                        <option value="ACTIVE">Activos</option>
+                        <option value="INACTIVE">Inactivos</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label
+                        htmlFor="product-category-filter"
+                        className="block text-sm font-medium text-slate-700"
+                    >
+                        Categoría
+                    </label>
+
+                    <select
+                        id="product-category-filter"
+                        value={categoryFilter}
+                        onChange={(event) => setCategoryFilter(event.target.value)}
+                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    >
+                        <option value="ALL">Todas las categorías</option>
+                        <option value="NONE">Sin categoría</option>
+
+                        {productCategoryOptions.map((category) => (
+                            <option key={category.id} value={category.id}>
+                                {category.name}
+                                {category.active === false ? " (inactiva)" : ""}
+                            </option>
+                        ))}
+                    </select>
+
+                </div>
+            </div>
+            {(
+                searchTerm !== "" ||
+                statusFilter !== "ALL" ||
+                categoryFilter !== "ALL"
+            ) && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setSearchTerm("");
+                            setStatusFilter("ALL");
+                            setCategoryFilter("ALL");
+                        }}
+                        className="mt-3 text-sm font-semibold text-blue-600 hover:text-blue-800 bg-white p-2 rounded-2xl hover:bg-slate-300"
+                    >
+                        Limpiar búsqueda y filtros
+                    </button>
+                )}
 
             {successMessage && (
                 <div
                     role="status"
-                    className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700"
+                    className="mt-6 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700"
                 >
                     {successMessage}
                 </div>
             )}
-
 
             {
                 isLoading && (
@@ -530,8 +688,17 @@ function ProductsPage() {
                 </p>
             )}
 
+            {!isLoading &&
+                !loadErrorMessage &&
+                products.length > 0 &&
+                filteredProducts.length === 0 && (
+                    <p className="mt-6 rounded-lg border border-slate-200 bg-white p-6 text-center text-slate-600">
+                        No se encontraron productos con la búsqueda y los filtros actuales.
+                    </p>
+                )}
+
             {
-                !isLoading && !loadErrorMessage && products.length > 0 && (
+                !isLoading && !loadErrorMessage && filteredProducts.length > 0 && (
                     <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-slate-200">
@@ -566,7 +733,7 @@ function ProductsPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-200">
-                                    {products.map((product) => (
+                                    {filteredProducts.map((product) => (
                                         <tr key={product.id} className="hover:bg-slate-50">
                                             <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-slate-500 sm:table-cell">
                                                 {product.id}
