@@ -12,12 +12,9 @@ import { getCategories } from "../services/category.service";
 import { getAuthSession } from "../services/auth-storage.service";
 import type { Category } from "../types/category";
 
-const formatPrice = (price: string) => {
-    return new Intl.NumberFormat("es-MX", {
-        style: "currency",
-        currency: "MXN",
-    }).format(Number(price));
-};
+import ProductFilters from "../components/products/ProductFilters";
+import ProductsTable from "../components/products/ProductsTable";
+import ProductForm from "../components/products/ProductForm";
 
 function ProductsPage() {
     const [searchTerm, setSearchTerm] = useState("");
@@ -370,289 +367,48 @@ function ProductsPage() {
                     </button>
                 )}
             </div>
-
-
             {canManageProducts && showForm && (
-                <div id="product-form" className="mt-6 flex justify-center sm:justify-end">
-                    <div className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                        <div>
-                            <h3 className="text-lg font-semibold text-slate-900">
-                                {isEditing ? "Editar producto" : "Nuevo producto"}
-                            </h3>
-
-                            <p className="mt-1 text-sm text-slate-500">
-                                {isEditing
-                                    ? "Modifica la información del producto seleccionado."
-                                    : "Registra un producto y define su precio, stock y categoría."}
-                            </p>
-                        </div>
-                        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label
-                                        htmlFor="product-name"
-                                        className="block text-sm font-medium text-slate-700"
-                                    >
-                                        Nombre
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        id="product-name"
-                                        value={name}
-                                        onChange={(event) => setName(event.target.value)}
-                                        required
-                                        disabled={isSubmitting}
-                                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                                    />
-                                </div>
-                                <div>
-                                    <label
-                                        htmlFor="product-category"
-                                        className="block text-sm font-medium text-slate-700"
-                                    >
-                                        Categoría
-                                        <span className="ml-1 font-normal text-slate-400">
-                                            (opcional)
-                                        </span>
-                                    </label>
-
-                                    <select
-                                        id="product-category"
-                                        value={categoryId}
-                                        onChange={(event) => {
-                                            setCategoryId(event.target.value);
-                                            setCategoryWarningMessage("");
-                                        }}
-                                        disabled={isSubmitting || Boolean(categoryLoadErrorMessage)}
-                                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                                    >
-                                        <option value="">Sin categoría</option>
-
-                                        {categories.map((category) => (
-                                            <option key={category.id} value={category.id}>
-                                                {category.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label
-                                        htmlFor="product-price"
-                                        className="block text-sm font-medium text-slate-700"
-                                    >
-                                        Precio
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        id="product-price"
-                                        value={price}
-                                        onChange={(event) => setPrice(event.target.value)}
-                                        min="0"
-                                        step="0.01"
-                                        inputMode="decimal"
-                                        required
-                                        disabled={isSubmitting}
-                                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                                    />
-                                </div>
-                                <div>
-                                    <label
-                                        htmlFor="product-stock"
-                                        className="block text-sm font-medium text-slate-700"
-                                    >
-                                        Stock
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        id="product-stock"
-                                        value={stock}
-                                        onChange={(event) => setStock(event.target.value)}
-                                        min="0"
-                                        step="1"
-                                        inputMode="numeric"
-                                        required
-                                        disabled={isSubmitting}
-                                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label
-                                    htmlFor="product-description"
-                                    className="block text-sm font-medium text-slate-700"
-                                >
-                                    Descripción
-                                    <span className="ml-1 font-normal text-slate-400">
-                                        (opcional)
-                                    </span>
-                                </label>
-
-                                <textarea
-                                    id="product-description"
-                                    value={description}
-                                    onChange={(event) => setDescription(event.target.value)}
-                                    disabled={isSubmitting}
-                                    rows={3}
-                                    className="mt-1 block w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                                />
-                            </div>
-
-                            {categoryWarningMessage && (
-                                <div
-                                    role="status"
-                                    className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700"
-                                >
-                                    {categoryWarningMessage}
-                                </div>
-                            )}
-
-                            {categoryLoadErrorMessage && (
-                                <div
-                                    role="alert"
-                                    className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"
-                                >
-                                    {categoryLoadErrorMessage}
-                                </div>
-                            )}
-
-                            {formErrorMessage && (
-                                <div
-                                    role="alert"
-                                    className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"
-                                >
-                                    {formErrorMessage}
-                                </div>
-                            )}
-
-                            <div className="flex flex-col gap-3 sm:flex-row">
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                                >
-                                    {isSubmitting
-                                        ? isEditing
-                                            ? "Guardando..."
-                                            : "Creando..."
-                                        : isEditing
-                                            ? "Guardar cambios"
-                                            : "Crear producto"}
-                                </button>
-                                {isEditing && (
-                                    <button
-                                        type="button"
-                                        onClick={handleCloseForm}
-                                        disabled={isSubmitting}
-                                        className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                                    >
-                                        Cancelar edición
-                                    </button>
-                                )}
-                            </div>
-
-
-                        </form>
-                    </div>
-                </div >
+                <ProductForm
+                    categories={categories}
+                    isEditing={isEditing}
+                    isSubmitting={isSubmitting}
+                    name={name}
+                    description={description}
+                    price={price}
+                    stock={stock}
+                    categoryId={categoryId}
+                    categoryLoadErrorMessage={categoryLoadErrorMessage}
+                    categoryWarningMessage={categoryWarningMessage}
+                    formErrorMessage={formErrorMessage}
+                    onNameChange={setName}
+                    onDescriptionChange={setDescription}
+                    onPriceChange={setPrice}
+                    onStockChange={setStock}
+                    onCategoryChange={(value) => {
+                        setCategoryId(value);
+                        setCategoryWarningMessage("");
+                    }}
+                    onSubmit={handleSubmit}
+                    onCancel={handleCloseForm}
+                />
             )}
 
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-                <div>
-                    <label
-                        htmlFor="product-search"
-                        className="block text-sm font-medium text-slate-700"
-                    >
-                        Buscar productos
-                    </label>
-
-                    <input
-                        id="product-search"
-                        type="search"
-                        value={searchTerm}
-                        onChange={(event) => setSearchTerm(event.target.value)}
-                        placeholder="Nombre, descripción o categoría"
-                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    />
-                </div>
 
 
-
-                <div>
-                    <label
-                        htmlFor="product-status-filter"
-                        className="block text-sm font-medium text-slate-700"
-                    >
-                        Estado
-                    </label>
-
-                    <select
-                        id="product-status-filter"
-                        value={statusFilter}
-                        onChange={(event) =>
-                            setStatusFilter(
-                                event.target.value as
-                                | "ALL"
-                                | "ACTIVE"
-                                | "INACTIVE"
-                            )
-                        }
-                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    >
-                        <option value="ALL">Todos los estados</option>
-                        <option value="ACTIVE">Activos</option>
-                        <option value="INACTIVE">Inactivos</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label
-                        htmlFor="product-category-filter"
-                        className="block text-sm font-medium text-slate-700"
-                    >
-                        Categoría
-                    </label>
-
-                    <select
-                        id="product-category-filter"
-                        value={categoryFilter}
-                        onChange={(event) => setCategoryFilter(event.target.value)}
-                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    >
-                        <option value="ALL">Todas las categorías</option>
-                        <option value="NONE">Sin categoría</option>
-
-                        {productCategoryOptions.map((category) => (
-                            <option key={category.id} value={category.id}>
-                                {category.name}
-                                {category.active === false ? " (inactiva)" : ""}
-                            </option>
-                        ))}
-                    </select>
-
-                </div>
-            </div>
-            {(
-                searchTerm !== "" ||
-                statusFilter !== "ALL" ||
-                categoryFilter !== "ALL"
-            ) && (
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setSearchTerm("");
-                            setStatusFilter("ALL");
-                            setCategoryFilter("ALL");
-                        }}
-                        className="mt-3 text-sm font-semibold text-blue-600 hover:text-blue-800 bg-white p-2 rounded-2xl hover:bg-slate-300"
-                    >
-                        Limpiar búsqueda y filtros
-                    </button>
-                )}
+            <ProductFilters
+                searchTerm={searchTerm}
+                statusFilter={statusFilter}
+                categoryFilter={categoryFilter}
+                categoryOptions={productCategoryOptions}
+                onSearchChange={setSearchTerm}
+                onStatusChange={setStatusFilter}
+                onCategoryChange={setCategoryFilter}
+                onClear={() => {
+                    setSearchTerm("");
+                    setStatusFilter("ALL");
+                    setCategoryFilter("ALL");
+                }}
+            />
 
             {successMessage && (
                 <div
@@ -697,123 +453,18 @@ function ProductsPage() {
                     </p>
                 )}
 
-            {
-                !isLoading && !loadErrorMessage && filteredProducts.length > 0 && (
-                    <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-slate-200">
-                                <thead className="bg-slate-50">
-                                    <tr>
-                                        <th scope="col" className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:table-cell">
-                                            ID
-                                        </th>
-                                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                            Producto
-                                        </th>
-                                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                            Categoría
-                                        </th>
-                                        <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                            Precio
-                                        </th>
-                                        <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                            Stock
-                                        </th>
-                                        <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                            Estado
-                                        </th>
-                                        {canManageProducts && (
-                                            <th
-                                                scope="col"
-                                                className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600"
-                                            >
-                                                Acciones
-                                            </th>
-                                        )}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-200">
-                                    {filteredProducts.map((product) => (
-                                        <tr key={product.id} className="hover:bg-slate-50">
-                                            <td className="hidden whitespace-nowrap px-4 py-3 text-sm text-slate-500 sm:table-cell">
-                                                {product.id}
-                                            </td>
-
-                                            <td className="px-4 py-3">
-                                                <p className="font-medium text-slate-900">
-                                                    {product.name}
-                                                </p>
-
-                                                <p className="mt-1 text-sm text-slate-500">
-                                                    {product.description ?? "Sin descripción"}
-                                                </p>
-                                            </td>
-
-                                            <td className="px-4 py-3 text-sm text-slate-600">
-                                                {product.category_name ?? "Sin categoría"}
-                                            </td>
-
-                                            <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-slate-900">
-                                                {formatPrice(product.price)}
-                                            </td>
-
-                                            <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-700">
-                                                {product.stock}
-                                            </td>
-
-                                            <td className="px-4 py-3">
-                                                <span
-                                                    className={
-                                                        product.active
-                                                            ? "inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700"
-                                                            : "inline-flex rounded-full bg-slate-200 px-2 py-1 text-xs font-medium text-slate-600"
-                                                    }
-                                                >
-                                                    {product.active ? "Activo" : "Inactivo"}
-                                                </span>
-                                            </td>
-                                            {canManageProducts && (
-                                                <td className="whitespace-nowrap px-4 py-3 text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleEditProduct(product)}
-                                                            disabled={isSubmitting || updatingStatusProductId !== null}
-                                                            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                                                        >
-                                                            Editar
-                                                        </button>
-
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => void handleToggleProductStatus(product)}
-                                                            disabled={isSubmitting || updatingStatusProductId !== null}
-                                                            className={
-                                                                product.active
-                                                                    ? "rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                                                                    : "rounded-lg border border-green-200 bg-white px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-60"
-                                                            }
-                                                        >
-                                                            {updatingStatusProductId === product.id
-                                                                ? product.active
-                                                                    ? "Desactivando..."
-                                                                    : "Activando..."
-                                                                : product.active
-                                                                    ? "Desactivar"
-                                                                    : "Activar"}
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            )}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )
-            }
-
+            {!isLoading &&
+                !loadErrorMessage &&
+                filteredProducts.length > 0 && (
+                    <ProductsTable
+                        products={filteredProducts}
+                        canManageProducts={canManageProducts}
+                        isSubmitting={isSubmitting}
+                        updatingStatusProductId={updatingStatusProductId}
+                        onEdit={handleEditProduct}
+                        onToggleStatus={handleToggleProductStatus}
+                    />
+                )}
             {
                 loadErrorMessage && (
                     <p
