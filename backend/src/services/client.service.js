@@ -14,14 +14,22 @@ const getClientById = async (id) => {
 }
 
 const createClient = async (data) => {
-    if (data.email) {
-        const existClient = await clientRepository.findByEmail(data.email)
-        if (existClient) {
+    if (data.email !== undefined && data.email !== null) {
+        const existingClient = await clientRepository.findByEmail(data.email);
+
+        if (existingClient) {
             throw new AppError('Client email already exists', 409);
         }
     }
 
-    return clientRepository.create(data);
+    const clientData = {
+        name: data.name,
+        email: data.email ?? null,
+        phone: data.phone ?? null,
+        address: data.address ?? null
+    };
+
+    return clientRepository.create(clientData);
 }
 
 const updateClient = async (id, data) => {
@@ -30,7 +38,7 @@ const updateClient = async (id, data) => {
         throw new AppError('Client not found', 404);
     }
 
-    if (data.email !== undefined) {
+    if (data.email !== undefined && data.email !== null) {
         const clientWithEmail = await clientRepository.findByEmail(data.email);
 
         if (clientWithEmail && clientWithEmail.id !== existingClient.id) {
@@ -39,11 +47,16 @@ const updateClient = async (id, data) => {
     }
     const updatedClientData = {
         name: data.name ?? existingClient.name,
-        email: data.email ?? existingClient.email,
-        phone: data.phone ?? existingClient.phone,
-        address: data.address ?? existingClient.address
+        email: data.email !== undefined
+            ? data.email
+            : existingClient.email,
+        phone: data.phone !== undefined
+            ? data.phone
+            : existingClient.phone,
+        address: data.address !== undefined
+            ? data.address
+            : existingClient.address
     };
-
     return clientRepository.update(id, updatedClientData);
 }
 

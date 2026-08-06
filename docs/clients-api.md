@@ -280,7 +280,21 @@ Partial updates are supported. At least one valid field is required.
 }
 ```
 
-### Success response
+### Request body to clear optional fields
+
+Optional fields can be cleared by sending `null`.
+
+```json
+{
+  "email": null,
+  "phone": null,
+  "address": null
+}
+```
+
+Fields that are not included in the request keep their current value.
+
+### Success response after clearing optional fields
 
 ```json
 {
@@ -288,9 +302,9 @@ Partial updates are supported. At least one valid field is required.
   "data": {
     "id": 1,
     "name": "Juan Pérez",
-    "email": "juan@test.com",
-    "phone": "2229999999",
-    "address": "Puebla, México",
+    "email": null,
+    "phone": null,
+    "address": null,
     "active": true,
     "created_at": "2026-07-13T21:42:36.209Z",
     "updated_at": "2026-07-13T21:50:10.100Z"
@@ -454,3 +468,4 @@ If the client exists but has no sales:
 - Multiple clients can exist without email.
 - Employees can create and update clients because they may need to register clients during a sale.
 - Only `ADMIN` and `SUPERVISOR` can activate or deactivate clients.
+- Optional fields can be cleared during an update by sending `null`.

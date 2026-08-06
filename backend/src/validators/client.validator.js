@@ -3,7 +3,7 @@ const AppError = require('../errors/AppError');
 
 const validateCreateClientInput = (data) => {
 
-    if (!data || typeof data !== 'object') {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
         throw new AppError('Client data is required', 400);
     }
 
@@ -19,7 +19,7 @@ const validateCreateClientInput = (data) => {
         throw new AppError('Name cannot be empty', 400);
     }
 
-    if (data.email !== undefined) {
+    if (data.email !== undefined && data.email !== null) {
         if (typeof data.email !== 'string') {
             throw new AppError('Email must be a string', 400);
         }
@@ -33,19 +33,18 @@ const validateCreateClientInput = (data) => {
         }
     }
 
-    if (data.phone !== undefined) {
+    if (data.phone !== undefined && data.phone !== null) {
         if (typeof data.phone !== 'string') {
-            throw new AppError('Phone must be a string', 400);
+            throw new AppError('Phone must be a string or null', 400);
         }
 
         if (data.phone.trim() === '') {
             throw new AppError('Phone cannot be empty', 400);
         }
     }
-
-    if (data.address !== undefined) {
+    if (data.address !== undefined && data.address !== null) {
         if (typeof data.address !== 'string') {
-            throw new AppError('Address must be a string', 400);
+            throw new AppError('Address must be a string or null', 400);
         }
 
         if (data.address.trim() === '') {
@@ -55,7 +54,7 @@ const validateCreateClientInput = (data) => {
 }
 
 const validateUpdateClientInput = (data) => {
-    if (!data || typeof data !== 'object') {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
         throw new AppError('Client data is required', 400);
     }
 
@@ -79,7 +78,7 @@ const validateUpdateClientInput = (data) => {
         }
     }
 
-    if (data.email !== undefined) {
+    if (data.email !== undefined && data.email !== null) {
         if (typeof data.email !== 'string') {
             throw new AppError('Email must be a string', 400);
         }
@@ -93,9 +92,9 @@ const validateUpdateClientInput = (data) => {
         }
     }
 
-    if (data.phone !== undefined) {
+    if (data.phone !== undefined && data.phone !== null) {
         if (typeof data.phone !== 'string') {
-            throw new AppError('Phone must be a string', 400);
+            throw new AppError('Phone must be a string or null', 400);
         }
 
         if (data.phone.trim() === '') {
@@ -103,9 +102,9 @@ const validateUpdateClientInput = (data) => {
         }
     }
 
-    if (data.address !== undefined) {
+    if (data.address !== undefined && data.address !== null) {
         if (typeof data.address !== 'string') {
-            throw new AppError('Address must be a string', 400);
+            throw new AppError('Address must be a string or null', 400);
         }
 
         if (data.address.trim() === '') {
