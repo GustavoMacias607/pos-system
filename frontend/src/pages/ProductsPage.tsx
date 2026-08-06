@@ -1,6 +1,10 @@
 import { useEffect, useState, type SubmitEvent } from "react";
 
-import { getProducts, createProduct } from "../services/product.service";
+import {
+    createProduct,
+    getProducts,
+    updateProduct,
+} from "../services/product.service";
 import type { Product, CreateProductRequest } from "../types/product";
 import { getCategories } from "../services/category.service";
 import { getAuthSession } from "../services/auth-storage.service";
@@ -32,6 +36,11 @@ function ProductsPage() {
     const [formErrorMessage, setFormErrorMessage] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
 
+    const [editingProductId, setEditingProductId] = useState<number | null>(null);
+    const [categoryWarningMessage, setCategoryWarningMessage] = useState("");
+
+    const isEditing = editingProductId !== null;
+
     const session = getAuthSession();
 
     const canManageProducts =
@@ -44,6 +53,8 @@ function ProductsPage() {
         setPrice("");
         setStock("");
         setCategoryId("");
+        setEditingProductId(null);
+        setCategoryWarningMessage("");
         setFormErrorMessage("");
         setSuccessMessage("");
     };
@@ -120,25 +131,65 @@ function ProductsPage() {
         }
 
         setIsSubmitting(true);
-
+        const productIdToUpdate = editingProductId;
         try {
-            const response = await createProduct(productData);
+            const response =
+                productIdToUpdate === null
+                    ? await createProduct(productData)
+                    : await updateProduct(productIdToUpdate, productData);
 
-            setProducts((currentProducts) => [
-                ...currentProducts,
-                response.data,
-            ]);
+            setProducts((currentProducts) => {
+                if (productIdToUpdate === null) {
+                    return [...currentProducts, response.data];
+                }
+
+                return currentProducts.map((product) =>
+                    product.id === response.data.id
+                        ? response.data
+                        : product
+                );
+            });
 
             resetForm();
-            setSuccessMessage("Producto creado correctamente.");
+
+            setSuccessMessage(
+                productIdToUpdate === null
+                    ? "Producto creado correctamente."
+                    : "Producto actualizado correctamente."
+            );
         } catch (error) {
             setFormErrorMessage(
                 error instanceof Error
                     ? error.message
-                    : "No fue posible crear el producto."
+                    : productIdToUpdate === null
+                        ? "No fue posible crear el producto."
+                        : "No fue posible actualizar el producto."
             );
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleEditProduct = (product: Product) => {
+        resetForm();
+
+        setEditingProductId(product.id);
+        setName(product.name);
+        setDescription(product.description ?? "");
+        setPrice(product.price);
+        setStock(String(product.stock));
+        setShowForm(true);
+
+        if (product.category_id !== null && product.category_active) {
+            setCategoryId(String(product.category_id));
+        } else {
+            setCategoryId("");
+
+            if (product.category_id !== null) {
+                setCategoryWarningMessage(
+                    "La categoría actual está inactiva. Selecciona una categoría activa o deja el producto sin categoría."
+                );
+            }
         }
     };
 
@@ -155,7 +206,7 @@ function ProductsPage() {
                 }
             }
             void loadCategories();
-        };
+        }
 
 
         const loadProducts = async () => {
@@ -205,18 +256,20 @@ function ProductsPage() {
                     <div className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                         <div>
                             <h3 className="text-lg font-semibold text-slate-900">
-                                Nuevo producto
+                                {isEditing ? "Editar producto" : "Nuevo producto"}
                             </h3>
 
                             <p className="mt-1 text-sm text-slate-500">
-                                Registra un producto y define su precio, stock y categoría.
+                                {isEditing
+                                    ? "Modifica la información del producto seleccionado."
+                                    : "Registra un producto y define su precio, stock y categoría."}
                             </p>
                         </div>
                         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <label
-                                        htmlFor="Product-name"
+                                        htmlFor="product-name"
                                         className="block text-sm font-medium text-slate-700"
                                     >
                                         Nombre
@@ -224,7 +277,7 @@ function ProductsPage() {
 
                                     <input
                                         type="text"
-                                        id="Product-name"
+                                        id="product-name"
                                         value={name}
                                         onChange={(event) => setName(event.target.value)}
                                         required
@@ -246,7 +299,10 @@ function ProductsPage() {
                                     <select
                                         id="product-category"
                                         value={categoryId}
-                                        onChange={(event) => setCategoryId(event.target.value)}
+                                        onChange={(event) => {
+                                            setCategoryId(event.target.value);
+                                            setCategoryWarningMessage("");
+                                        }}
                                         disabled={isSubmitting || Boolean(categoryLoadErrorMessage)}
                                         className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                                     >
@@ -263,7 +319,7 @@ function ProductsPage() {
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <label
-                                        htmlFor="Product-price"
+                                        htmlFor="product-price"
                                         className="block text-sm font-medium text-slate-700"
                                     >
                                         Precio
@@ -284,7 +340,7 @@ function ProductsPage() {
                                 </div>
                                 <div>
                                     <label
-                                        htmlFor="Product-stock"
+                                        htmlFor="product-stock"
                                         className="block text-sm font-medium text-slate-700"
                                     >
                                         Stock
@@ -306,7 +362,7 @@ function ProductsPage() {
                             </div>
                             <div>
                                 <label
-                                    htmlFor="Product-description"
+                                    htmlFor="product-description"
                                     className="block text-sm font-medium text-slate-700"
                                 >
                                     Descripción
@@ -316,7 +372,7 @@ function ProductsPage() {
                                 </label>
 
                                 <textarea
-                                    id="Product-description"
+                                    id="product-description"
                                     value={description}
                                     onChange={(event) => setDescription(event.target.value)}
                                     disabled={isSubmitting}
@@ -324,6 +380,14 @@ function ProductsPage() {
                                     className="mt-1 block w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                                 />
                             </div>
+                            {categoryWarningMessage && (
+                                <div
+                                    role="status"
+                                    className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700"
+                                >
+                                    {categoryWarningMessage}
+                                </div>
+                            )}
 
                             {categoryLoadErrorMessage && (
                                 <div
@@ -357,8 +421,24 @@ function ProductsPage() {
                                     disabled={isSubmitting}
                                     className="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                                 >
-                                    {isSubmitting ? "Creando..." : "Crear producto"}
+                                    {isSubmitting
+                                        ? isEditing
+                                            ? "Guardando..."
+                                            : "Creando..."
+                                        : isEditing
+                                            ? "Guardar cambios"
+                                            : "Crear producto"}
                                 </button>
+                                {isEditing && (
+                                    <button
+                                        type="button"
+                                        onClick={handleCloseForm}
+                                        disabled={isSubmitting}
+                                        className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                                    >
+                                        Cancelar edición
+                                    </button>
+                                )}
                             </div>
 
 
@@ -412,6 +492,14 @@ function ProductsPage() {
                                         <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                                             Estado
                                         </th>
+                                        {canManageProducts && (
+                                            <th
+                                                scope="col"
+                                                className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600"
+                                            >
+                                                Acciones
+                                            </th>
+                                        )}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-200">
@@ -454,6 +542,18 @@ function ProductsPage() {
                                                     {product.active ? "Activo" : "Inactivo"}
                                                 </span>
                                             </td>
+                                            {canManageProducts && (
+                                                <td className="whitespace-nowrap px-4 py-3 text-right">
+                                                    <button
+                                                        disabled={isSubmitting}
+                                                        type="button"
+                                                        onClick={() => handleEditProduct(product)}
+                                                        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                                    >
+                                                        Editar
+                                                    </button>
+                                                </td>
+                                            )}
                                         </tr>
                                     ))}
                                 </tbody>

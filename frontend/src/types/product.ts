@@ -25,6 +25,8 @@ export type CreateProductRequest = {
     categoryId?: number;
 };
 
+export type UpdateProductRequest = CreateProductRequest;
+
 export type ProductResponse = {
     success: true;
     data: Product;
