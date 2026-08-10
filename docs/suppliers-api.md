@@ -75,10 +75,10 @@ Allowed roles: `ADMIN`, `SUPERVISOR`, `EMPLOYEE`.
     {
       "id": "1",
       "name": "Distribuidora Central",
-      "contact_name": "Laura GÃ³mez",
+      "contact_name": "Laura Gómez",
       "email": "ventas@central.com",
       "phone": "2221234567",
-      "address": "Puebla, MÃ©xico",
+      "address": "Puebla, México",
       "active": true,
       "created_at": "2026-07-16T17:00:00.000Z",
       "updated_at": "2026-07-16T17:00:00.000Z"
@@ -109,10 +109,10 @@ Allowed roles: `ADMIN`, `SUPERVISOR`, `EMPLOYEE`.
   "data": {
     "id": "1",
     "name": "Distribuidora Central",
-    "contact_name": "Laura GÃ³mez",
+    "contact_name": "Laura Gómez",
     "email": "ventas@central.com",
     "phone": "2221234567",
-    "address": "Puebla, MÃ©xico",
+    "address": "Puebla, México",
     "active": true,
     "created_at": "2026-07-16T17:00:00.000Z",
     "updated_at": "2026-07-16T17:00:00.000Z"
@@ -135,10 +135,10 @@ Allowed roles: `ADMIN`, `SUPERVISOR`, `EMPLOYEE`.
 ```json
 {
   "name": "Distribuidora Central",
-  "contactName": "Laura GÃ³mez",
+  "contactName": "Laura Gómez",
   "email": "ventas@central.com",
   "phone": "2221234567",
-  "address": "Puebla, MÃ©xico"
+  "address": "Puebla, México"
 }
 ```
 
@@ -156,10 +156,10 @@ Only `name` is required. Optional fields that are not sent are stored as `null`.
   "data": {
     "id": "1",
     "name": "Distribuidora Central",
-    "contact_name": "Laura GÃ³mez",
+    "contact_name": "Laura Gómez",
     "email": "ventas@central.com",
     "phone": "2221234567",
-    "address": "Puebla, MÃ©xico",
+    "address": "Puebla, México",
     "active": true,
     "created_at": "2026-07-16T17:00:00.000Z",
     "updated_at": "2026-07-16T17:00:00.000Z"
@@ -184,8 +184,21 @@ At least one editable field must be included. Fields that are not sent keep thei
 
 ```json
 {
-  "contactName": "Mariana LÃ³pez",
+  "contactName": "Mariana López",
   "phone": "2229998877"
+}
+```
+
+### Request body to clear optional fields
+
+Optional fields can be cleared by sending `null`.
+
+```json
+{
+  "contactName": null,
+  "email": null,
+  "phone": null,
+  "address": null
 }
 ```
 
@@ -201,10 +214,10 @@ At least one editable field must be included. Fields that are not sent keep thei
   "data": {
     "id": "1",
     "name": "Distribuidora Central",
-    "contact_name": "Mariana LÃ³pez",
+    "contact_name": "Mariana López",
     "email": "ventas@central.com",
     "phone": "2229998877",
-    "address": "Puebla, MÃ©xico",
+    "address": "Puebla, México",
     "active": true,
     "created_at": "2026-07-16T17:00:00.000Z",
     "updated_at": "2026-07-16T17:30:00.000Z"
@@ -237,10 +250,10 @@ This endpoint performs a soft delete by setting `active` to `false`. It does not
   "data": {
     "id": "1",
     "name": "Distribuidora Central",
-    "contact_name": "Mariana LÃ³pez",
+    "contact_name": "Mariana López",
     "email": "ventas@central.com",
     "phone": "2229998877",
-    "address": "Puebla, MÃ©xico",
+    "address": "Puebla, México",
     "active": false,
     "created_at": "2026-07-16T17:00:00.000Z",
     "updated_at": "2026-07-16T18:00:00.000Z"
@@ -269,10 +282,10 @@ Allowed roles: `ADMIN`, `SUPERVISOR`.
   "data": {
     "id": "1",
     "name": "Distribuidora Central",
-    "contact_name": "Mariana LÃ³pez",
+    "contact_name": "Mariana López",
     "email": "ventas@central.com",
     "phone": "2229998877",
-    "address": "Puebla, MÃ©xico",
+    "address": "Puebla, México",
     "active": true,
     "created_at": "2026-07-16T17:00:00.000Z",
     "updated_at": "2026-07-16T18:05:00.000Z"
@@ -310,3 +323,4 @@ Typical error response:
 - Suppliers are deactivated using soft delete.
 - Inactive suppliers remain available through read endpoints.
 - Only `ADMIN` and `SUPERVISOR` can activate or deactivate suppliers.
+- Optional fields can be cleared during an update by sending `null`.

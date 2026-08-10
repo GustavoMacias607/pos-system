@@ -44,7 +44,7 @@ const updateSupplier = async (id, data) => {
         throw new AppError('Supplier not found', 404);
     }
 
-    if (data.email !== undefined) {
+    if (data.email !== undefined && data.email !== null) {
         const normalizedEmail = data.email.trim();
 
         const supplierWithEmail = await supplierRepository.findByEmail(
@@ -65,19 +65,27 @@ const updateSupplier = async (id, data) => {
             : existingSupplier.name,
 
         contactName: data.contactName !== undefined
-            ? data.contactName.trim()
+            ? data.contactName === null
+                ? null
+                : data.contactName.trim()
             : existingSupplier.contact_name,
 
         email: data.email !== undefined
-            ? data.email.trim()
+            ? data.email === null
+                ? null
+                : data.email.trim()
             : existingSupplier.email,
 
         phone: data.phone !== undefined
-            ? data.phone.trim()
+            ? data.phone === null
+                ? null
+                : data.phone.trim()
             : existingSupplier.phone,
 
         address: data.address !== undefined
-            ? data.address.trim()
+            ? data.address === null
+                ? null
+                : data.address.trim()
             : existingSupplier.address
     };
 

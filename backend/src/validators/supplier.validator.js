@@ -3,7 +3,7 @@ const AppError = require('../errors/AppError');
 
 const validateCreateSupplierInput = (data) => {
 
-    if (!data || typeof data !== 'object') {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
         throw new AppError('Supplier data is required', 400);
     }
 
@@ -18,9 +18,9 @@ const validateCreateSupplierInput = (data) => {
     if (data.name.trim() === '') {
         throw new AppError('Name cannot be empty', 400);
     }
-    if (data.contactName !== undefined) {
+    if (data.contactName !== undefined && data.contactName !== null) {
         if (typeof data.contactName !== 'string') {
-            throw new AppError('Contact name must be a string', 400);
+            throw new AppError('Contact name must be a string or null', 400);
         }
 
         if (data.contactName.trim() === '') {
@@ -28,9 +28,9 @@ const validateCreateSupplierInput = (data) => {
         }
     }
 
-    if (data.email !== undefined) {
+    if (data.email !== undefined && data.email !== null) {
         if (typeof data.email !== 'string') {
-            throw new AppError('Email must be a string', 400);
+            throw new AppError('Email must be a string or null', 400);
         }
 
         if (data.email.trim() === '') {
@@ -42,9 +42,9 @@ const validateCreateSupplierInput = (data) => {
         }
     }
 
-    if (data.phone !== undefined) {
+    if (data.phone !== undefined && data.phone !== null) {
         if (typeof data.phone !== 'string') {
-            throw new AppError('Phone must be a string', 400);
+            throw new AppError('Phone must be a string or null', 400);
         }
 
         if (data.phone.trim() === '') {
@@ -52,9 +52,9 @@ const validateCreateSupplierInput = (data) => {
         }
     }
 
-    if (data.address !== undefined) {
+    if (data.address !== undefined && data.address !== null) {
         if (typeof data.address !== 'string') {
-            throw new AppError('Address must be a string', 400);
+            throw new AppError('Address must be a string or null', 400);
         }
 
         if (data.address.trim() === '') {
@@ -64,7 +64,7 @@ const validateCreateSupplierInput = (data) => {
 }
 
 const validateUpdateSupplierInput = (data) => {
-    if (!data || typeof data !== 'object') {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
         throw new AppError('Supplier data is required', 400);
     }
 
@@ -88,9 +88,9 @@ const validateUpdateSupplierInput = (data) => {
         }
     }
 
-    if (data.contactName !== undefined) {
+    if (data.contactName !== undefined && data.contactName !== null) {
         if (typeof data.contactName !== 'string') {
-            throw new AppError('Contact name must be a string', 400);
+            throw new AppError('Contact name must be a string or null', 400);
         }
 
         if (data.contactName.trim() === '') {
@@ -98,9 +98,9 @@ const validateUpdateSupplierInput = (data) => {
         }
     }
 
-    if (data.email !== undefined) {
+    if (data.email !== undefined && data.email !== null) {
         if (typeof data.email !== 'string') {
-            throw new AppError('Email must be a string', 400);
+            throw new AppError('Email must be a string or null', 400);
         }
 
         if (data.email.trim() === '') {
@@ -112,9 +112,9 @@ const validateUpdateSupplierInput = (data) => {
         }
     }
 
-    if (data.phone !== undefined) {
+    if (data.phone !== undefined && data.phone !== null) {
         if (typeof data.phone !== 'string') {
-            throw new AppError('Phone must be a string', 400);
+            throw new AppError('Phone must be a string or null', 400);
         }
 
         if (data.phone.trim() === '') {
@@ -122,9 +122,9 @@ const validateUpdateSupplierInput = (data) => {
         }
     }
 
-    if (data.address !== undefined) {
+    if (data.address !== undefined && data.address !== null) {
         if (typeof data.address !== 'string') {
-            throw new AppError('Address must be a string', 400);
+            throw new AppError('Address must be a string or null', 400);
         }
 
         if (data.address.trim() === '') {
