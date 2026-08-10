@@ -2,11 +2,20 @@ import { useEffect, useState, type SubmitEvent } from "react";
 
 import ClientsTable from "../components/clients/ClientsTable";
 import ClientForm from "../components/clients/ClientForm";
+import { getAuthSession } from "../services/auth-storage.service";
 
-import { createClient, getClients, updateClient } from "../services/client.service";
+import {
+    createClient,
+    getClients,
+    updateClient,
+    activateClient,
+    deactivateClient,
+} from "../services/client.service";
 import type { Client, CreateClientRequest, UpdateClientRequest } from "../types/client";
 
 function ClientsPage() {
+    const session = getAuthSession();
+
     const [clients, setClients] = useState<Client[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [loadErrorMessage, setLoadErrorMessage] = useState("");
@@ -26,6 +35,12 @@ function ClientsPage() {
 
     const isEditing = editingClientId !== null;
 
+    const canManageClientStatus =
+        session?.user.role === "ADMIN" ||
+        session?.user.role === "SUPERVISOR";
+
+    const [updatingStatusClientId, setUpdatingStatusClientId] = useState<number | null>(null);
+    const [statusErrorMessage, setStatusErrorMessage] = useState("");
 
     const resetForm = () => {
         setName("");
@@ -45,6 +60,55 @@ function ClientsPage() {
     const handleCloseForm = () => {
         resetForm();
         setShowForm(false);
+    };
+
+    const handleToggleClientStatus = async (client: Client) => {
+        setStatusErrorMessage("");
+        setSuccessMessage("");
+
+        if (client.active) {
+            const confirmed = window.confirm(
+                `¿Seguro que deseas desactivar al cliente "${client.name}"?`
+            );
+
+            if (!confirmed) {
+                return;
+            }
+        }
+
+        setUpdatingStatusClientId(client.id);
+
+        try {
+            const response = client.active
+                ? await deactivateClient(client.id)
+                : await activateClient(client.id);
+
+            setClients((currentClients) =>
+                currentClients.map((currentClient) =>
+                    currentClient.id === response.data.id
+                        ? response.data
+                        : currentClient
+                )
+            );
+
+            if (editingClientId === client.id) {
+                handleCloseForm();
+            }
+
+            setSuccessMessage(
+                client.active
+                    ? "Cliente desactivado correctamente."
+                    : "Cliente activado correctamente."
+            );
+        } catch (error) {
+            setStatusErrorMessage(
+                error instanceof Error
+                    ? error.message
+                    : "No fue posible cambiar el estado del cliente."
+            );
+        } finally {
+            setUpdatingStatusClientId(null);
+        }
     };
 
     const handleEditClient = (client: Client) => {
@@ -229,10 +293,23 @@ function ClientsPage() {
                     No hay clientes registrados.
                 </p>
             )}
+
+            {statusErrorMessage && (
+                <p
+                    role="alert"
+                    className="mt-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"
+                >
+                    {statusErrorMessage}
+                </p>
+            )}
             {!isLoading && !loadErrorMessage && clients.length > 0 && (
                 <ClientsTable
                     clients={clients}
+                    canManageClientStatus={canManageClientStatus}
+                    isSubmitting={isSubmitting}
+                    updatingStatusClientId={updatingStatusClientId}
                     onEdit={handleEditClient}
+                    onToggleStatus={handleToggleClientStatus}
                 />
             )}
         </section>

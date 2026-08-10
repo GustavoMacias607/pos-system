@@ -81,3 +81,49 @@ export async function updateClient(clientId: number, clientData: UpdateClientReq
 
     return result;
 }
+
+export async function deactivateClient(clientId: number): Promise<ClientMutationResponse> {
+    const session = getAuthSession();
+
+    if (!session) {
+        throw new Error("No hay una sesión activa");
+    }
+
+    const response = await fetch(`/api/clients/${clientId}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${session.accessToken}`,
+        },
+    });
+
+    const result = (await response.json()) as ClientMutationResponse | ApiErrorResponse;
+
+    if (!result.success) {
+        throw new Error(result.message);
+    }
+
+    return result;
+}
+
+export async function activateClient(clientId: number): Promise<ClientMutationResponse> {
+    const session = getAuthSession();
+
+    if (!session) {
+        throw new Error("No hay una sesión activa");
+    }
+
+    const response = await fetch(`/api/clients/${clientId}/activate`, {
+        method: "PATCH",
+        headers: {
+            Authorization: `Bearer ${session.accessToken}`,
+        },
+    });
+
+    const result = (await response.json()) as ClientMutationResponse | ApiErrorResponse;
+
+    if (!result.success) {
+        throw new Error(result.message);
+    }
+
+    return result;
+}

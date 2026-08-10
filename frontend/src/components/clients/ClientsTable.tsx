@@ -2,12 +2,20 @@ import type { Client } from "../../types/client";
 
 type ClientsTableProps = {
     clients: Client[];
+    canManageClientStatus: boolean;
+    isSubmitting: boolean;
+    updatingStatusClientId: number | null;
     onEdit: (client: Client) => void;
+    onToggleStatus: (client: Client) => Promise<void>;
 };
 
 function ClientsTable({
     clients,
+    canManageClientStatus,
+    isSubmitting,
+    updatingStatusClientId,
     onEdit,
+    onToggleStatus
 }: ClientsTableProps) {
 
     return (
@@ -26,7 +34,7 @@ function ClientsTable({
                                 Contacto
                             </th>
                             <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                Direción
+                                Dirección
                             </th>
                             <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                                 Estado
@@ -76,13 +84,43 @@ function ClientsTable({
                                     </span>
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-3 text-right">
-                                    <button
-                                        type="button"
-                                        onClick={() => onEdit(client)}
-                                        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                                    >
-                                        Editar
-                                    </button>
+                                    <div className="flex justify-end gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => onEdit(client)}
+                                            disabled={
+                                                isSubmitting ||
+                                                updatingStatusClientId !== null
+                                            }
+                                            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            Editar
+                                        </button>
+
+                                        {canManageClientStatus && (
+                                            <button
+                                                type="button"
+                                                disabled={
+                                                    isSubmitting ||
+                                                    updatingStatusClientId !== null
+                                                }
+                                                onClick={() => void onToggleStatus(client)}
+                                                className={
+                                                    client.active
+                                                        ? "rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50"
+                                                        : "rounded-lg border border-green-200 bg-white px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-50"
+                                                }
+                                            >
+                                                {updatingStatusClientId === client.id
+                                                    ? client.active
+                                                        ? "Desactivando..."
+                                                        : "Activando..."
+                                                    : client.active
+                                                        ? "Desactivar"
+                                                        : "Activar"}
+                                            </button>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         ))}
