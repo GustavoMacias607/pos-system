@@ -1,7 +1,13 @@
-import { useEffect, useState, type SubmitEvent } from "react";
+import {
+    useEffect,
+    useMemo,
+    useState,
+    type SubmitEvent,
+} from "react";
 
 import ClientsTable from "../components/clients/ClientsTable";
 import ClientForm from "../components/clients/ClientForm";
+import ClientFilters from "../components/clients/ClientFilters";
 import { getAuthSession } from "../services/auth-storage.service";
 
 import {
@@ -41,6 +47,37 @@ function ClientsPage() {
 
     const [updatingStatusClientId, setUpdatingStatusClientId] = useState<number | null>(null);
     const [statusErrorMessage, setStatusErrorMessage] = useState("");
+
+    const [searchTerm, setSearchTerm] = useState("");
+
+    const [statusFilter, setStatusFilter] = useState<
+        "ALL" | "ACTIVE" | "INACTIVE"
+    >("ALL");
+
+    const filteredClients = useMemo(() => {
+        const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+        return clients.filter((client) => {
+            const name = client.name.toLowerCase();
+            const email = client.email?.toLowerCase() ?? "";
+            const phone = client.phone?.toLowerCase() ?? "";
+            const address = client.address?.toLowerCase() ?? "";
+
+            const matchesSearch =
+                normalizedSearchTerm === "" ||
+                name.includes(normalizedSearchTerm) ||
+                email.includes(normalizedSearchTerm) ||
+                phone.includes(normalizedSearchTerm) ||
+                address.includes(normalizedSearchTerm);
+
+            const matchesStatus =
+                statusFilter === "ALL" ||
+                (statusFilter === "ACTIVE" && client.active) ||
+                (statusFilter === "INACTIVE" && !client.active);
+
+            return matchesSearch && matchesStatus;
+        });
+    }, [clients, searchTerm, statusFilter]);
 
     const resetForm = () => {
         setName("");
@@ -273,6 +310,26 @@ function ClientsPage() {
                 </div>
             )}
 
+            <ClientFilters
+                searchTerm={searchTerm}
+                statusFilter={statusFilter}
+                onSearchChange={setSearchTerm}
+                onStatusChange={setStatusFilter}
+                onClear={() => {
+                    setSearchTerm("");
+                    setStatusFilter("ALL");
+                }}
+            />
+
+            {!isLoading &&
+                !loadErrorMessage &&
+                clients.length > 0 &&
+                filteredClients.length === 0 && (
+                    <p className="mt-6 rounded-lg border border-slate-200 bg-white p-6 text-center text-slate-600">
+                        No se encontraron clientes con la búsqueda y los filtros actuales.
+                    </p>
+                )}
+
 
             {isLoading && (
                 <p className="mt-6 text-slate-600">
@@ -302,9 +359,9 @@ function ClientsPage() {
                     {statusErrorMessage}
                 </p>
             )}
-            {!isLoading && !loadErrorMessage && clients.length > 0 && (
+            {!isLoading && !loadErrorMessage && filteredClients.length > 0 && (
                 <ClientsTable
-                    clients={clients}
+                    clients={filteredClients}
                     canManageClientStatus={canManageClientStatus}
                     isSubmitting={isSubmitting}
                     updatingStatusClientId={updatingStatusClientId}
