@@ -7,6 +7,8 @@ type ClientFormProps = {
     phone: string;
     address: string;
     formErrorMessage: string;
+    isEditing: boolean;
+    onCancel: () => void;
     onNameChange: (value: string) => void;
     onEmailChange: (value: string) => void;
     onPhoneChange: (value: string) => void;
@@ -15,12 +17,14 @@ type ClientFormProps = {
 };
 
 function ClientForm({
+    isEditing,
     isSubmitting,
     name,
     email,
     phone,
     address,
     formErrorMessage,
+    onCancel,
     onNameChange,
     onEmailChange,
     onPhoneChange,
@@ -32,14 +36,16 @@ function ClientForm({
             <div className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div>
                     <h3 className="text-lg font-semibold text-slate-900">
-                        Nuevo cliente
+                        {isEditing ? "Editar cliente" : "Nuevo cliente"}
                     </h3>
 
                     <p className="mt-1 text-sm text-slate-500">
-                        Registra los datos del cliente. El correo, teléfono y dirección son opcionales.
+                        {isEditing
+                            ? "Modifica la información del cliente seleccionado."
+                            : "Registra los datos del cliente. El correo, teléfono y dirección son opcionales."}
                     </p>
                 </div>
-                <form onSubmit={onSubmit}>
+                <form onSubmit={onSubmit} className="mt-5 space-y-4">
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div>
                             <label
@@ -139,8 +145,25 @@ function ClientForm({
                             disabled={isSubmitting}
                             className="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                         >
-                            {isSubmitting ? "Creando..." : "Crear cliente"}
+                            {isSubmitting
+                                ? isEditing
+                                    ? "Guardando..."
+                                    : "Creando..."
+                                : isEditing
+                                    ? "Guardar cambios"
+                                    : "Crear cliente"}
                         </button>
+
+                        {isEditing && (
+                            <button
+                                type="button"
+                                onClick={onCancel}
+                                disabled={isSubmitting}
+                                className="inline-flex w-full items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                            >
+                                Cancelar edición
+                            </button>
+                        )}
                     </div>
 
 

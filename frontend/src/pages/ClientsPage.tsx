@@ -3,8 +3,8 @@ import { useEffect, useState, type SubmitEvent } from "react";
 import ClientsTable from "../components/clients/ClientsTable";
 import ClientForm from "../components/clients/ClientForm";
 
-import { createClient, getClients } from "../services/client.service";
-import type { Client, CreateClientRequest } from "../types/client";
+import { createClient, getClients, updateClient } from "../services/client.service";
+import type { Client, CreateClientRequest, UpdateClientRequest } from "../types/client";
 
 function ClientsPage() {
     const [clients, setClients] = useState<Client[]>([]);
@@ -22,12 +22,18 @@ function ClientsPage() {
     const [formErrorMessage, setFormErrorMessage] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
 
+    const [editingClientId, setEditingClientId] = useState<number | null>(null);
+
+    const isEditing = editingClientId !== null;
+
+
     const resetForm = () => {
         setName("");
         setEmail("");
         setPhone("");
         setAddress("");
         setFormErrorMessage("");
+        setEditingClientId(null);
     };
 
     const handleOpenCreateForm = () => {
@@ -39,6 +45,18 @@ function ClientsPage() {
     const handleCloseForm = () => {
         resetForm();
         setShowForm(false);
+    };
+
+    const handleEditClient = (client: Client) => {
+        resetForm();
+
+        setEditingClientId(client.id);
+        setName(client.name);
+        setEmail(client.email ?? "");
+        setPhone(client.phone ?? "");
+        setAddress(client.address ?? "");
+        setSuccessMessage("");
+        setShowForm(true);
     };
 
     const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
@@ -57,39 +75,65 @@ function ClientsPage() {
             return;
         }
 
-        const clientData: CreateClientRequest = {
+        const createClientData: CreateClientRequest = {
             name: trimmedName,
         };
 
         if (trimmedEmail !== "") {
-            clientData.email = trimmedEmail;
+            createClientData.email = trimmedEmail;
         }
 
         if (trimmedPhone !== "") {
-            clientData.phone = trimmedPhone;
+            createClientData.phone = trimmedPhone;
         }
 
         if (trimmedAddress !== "") {
-            clientData.address = trimmedAddress;
+            createClientData.address = trimmedAddress;
         }
+
+        const updateClientData: UpdateClientRequest = {
+            name: trimmedName,
+            email: trimmedEmail === "" ? null : trimmedEmail,
+            phone: trimmedPhone === "" ? null : trimmedPhone,
+            address: trimmedAddress === "" ? null : trimmedAddress,
+        };
+
+        const clientIdToUpdate = editingClientId;
 
         setIsSubmitting(true);
 
         try {
-            const response = await createClient(clientData);
 
-            setClients((currentClients) => [
-                ...currentClients,
-                response.data,
-            ]);
+            const response =
+                clientIdToUpdate === null
+                    ? await createClient(createClientData)
+                    : await updateClient(clientIdToUpdate, updateClientData);
+
+            setClients((currentClients) => {
+                if (clientIdToUpdate === null) {
+                    return [...currentClients, response.data];
+                }
+
+                return currentClients.map((client) =>
+                    client.id === response.data.id
+                        ? response.data
+                        : client
+                );
+            });
 
             resetForm();
-            setSuccessMessage("Cliente creado correctamente.");
+            setSuccessMessage(
+                clientIdToUpdate === null
+                    ? "Cliente creado correctamente."
+                    : "Cliente actualizado correctamente."
+            );
         } catch (error) {
             setFormErrorMessage(
                 error instanceof Error
                     ? error.message
-                    : "No fue posible crear el cliente."
+                    : clientIdToUpdate === null
+                        ? "No fue posible crear el cliente."
+                        : "No fue posible actualizar el cliente."
             );
         } finally {
             setIsSubmitting(false);
@@ -140,12 +184,14 @@ function ClientsPage() {
 
             {showForm && (
                 <ClientForm
+                    isEditing={isEditing}
                     isSubmitting={isSubmitting}
                     name={name}
                     email={email}
                     phone={phone}
                     address={address}
                     formErrorMessage={formErrorMessage}
+                    onCancel={handleCloseForm}
                     onNameChange={setName}
                     onEmailChange={setEmail}
                     onPhoneChange={setPhone}
@@ -184,7 +230,10 @@ function ClientsPage() {
                 </p>
             )}
             {!isLoading && !loadErrorMessage && clients.length > 0 && (
-                <ClientsTable clients={clients} />
+                <ClientsTable
+                    clients={clients}
+                    onEdit={handleEditClient}
+                />
             )}
         </section>
     );

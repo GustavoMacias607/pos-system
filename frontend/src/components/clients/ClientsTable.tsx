@@ -2,9 +2,13 @@ import type { Client } from "../../types/client";
 
 type ClientsTableProps = {
     clients: Client[];
+    onEdit: (client: Client) => void;
 };
 
-function ClientsTable({ clients }: ClientsTableProps) {
+function ClientsTable({
+    clients,
+    onEdit,
+}: ClientsTableProps) {
 
     return (
         <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -26,6 +30,12 @@ function ClientsTable({ clients }: ClientsTableProps) {
                             </th>
                             <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                                 Estado
+                            </th>
+                            <th
+                                scope="col"
+                                className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600"
+                            >
+                                Acciones
                             </th>
                         </tr>
                     </thead>
@@ -65,8 +75,15 @@ function ClientsTable({ clients }: ClientsTableProps) {
                                         {client.active ? "Activo" : "Inactivo"}
                                     </span>
                                 </td>
-
-
+                                <td className="whitespace-nowrap px-4 py-3 text-right">
+                                    <button
+                                        type="button"
+                                        onClick={() => onEdit(client)}
+                                        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                                    >
+                                        Editar
+                                    </button>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
