@@ -203,7 +203,8 @@ const decreaseStockIfAvailable = async (
     const result = await client.query(
         `
         UPDATE products
-        SET stock = stock - $1
+        SET stock = stock - $1,
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = $2
           AND stock >= $1
         RETURNING *

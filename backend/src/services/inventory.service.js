@@ -45,11 +45,18 @@ const createAdjustment = async (data) => {
                 data.quantity
             );
         } else {
-            updatedProduct = await productRepository.decreaseStock(
+            updatedProduct = await productRepository.decreaseStockIfAvailable(
                 client,
                 data.productId,
                 Math.abs(data.quantity)
             );
+
+            if (!updatedProduct) {
+                throw new AppError(
+                    'Insufficient stock for adjustment',
+                    409
+                );
+            }
         }
 
         const createdMovement = await inventoryRepository.createMovement(client, {
@@ -139,11 +146,19 @@ const createWaste = async (data) => {
     try {
         await client.query('BEGIN');
 
-        const updatedProduct = await productRepository.decreaseStock(
-            client,
-            data.productId,
-            data.quantity
-        );
+        const updatedProduct =
+            await productRepository.decreaseStockIfAvailable(
+                client,
+                data.productId,
+                data.quantity
+            );
+
+        if (!updatedProduct) {
+            throw new AppError(
+                'Insufficient stock for waste',
+                409
+            );
+        }
 
         const createdMovement = await inventoryRepository.createMovement(client, {
             productId: data.productId,
